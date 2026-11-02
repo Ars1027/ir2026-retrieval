@@ -1,2 +1,3 @@
-# Student tools, validation, evaluation and the offline demo use only Python 3.10+.
-# Add and pin dependencies required by your retrieval method or optional agent.
+# Member A must deliver requirements/member_a.txt before full installation.
+-r requirements/member_a.txt
+-r requirements/member_b.txt

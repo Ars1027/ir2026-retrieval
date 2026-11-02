@@ -1,0 +1,5 @@
+numpy==2.4.4
+faiss-cpu==1.13.0
+sentence-transformers==5.1.2
+transformers==4.57.1
+torch==2.9.0
