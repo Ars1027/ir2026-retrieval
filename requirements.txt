@@ -1,0 +1,2 @@
+# Student tools, validation, evaluation and the offline demo use only Python 3.10+.
+# Add and pin dependencies required by your retrieval method or optional agent.

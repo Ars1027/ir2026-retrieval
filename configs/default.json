@@ -1,0 +1,13 @@
+{
+  "release": "IR2026-BCP-200-v1",
+  "protocol_version": "ir2026.retrieval.v2",
+  "limits": {
+    "max_tool_calls": 32,
+    "max_tool_output_chars": 12000,
+    "max_seconds": 600,
+    "max_doc_ids": 10,
+    "max_evidence_quotes": 5,
+    "min_quote_chars": 20,
+    "max_quote_chars": 1200
+  }
+}

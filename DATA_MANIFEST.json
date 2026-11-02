@@ -1,0 +1,37 @@
+{
+  "release": "IR2026-BCP-200-v1",
+  "seed": 2026,
+  "split_counts": {
+    "train": 100,
+    "dev": 50,
+    "test": 50
+  },
+  "corpus_documents": 10000,
+  "corpus_text_bytes": 318034743,
+  "required_evidence_and_gold_documents": 1185,
+  "selected_hard_negative_documents": 5901,
+  "filler_documents": 2914,
+  "hard_negatives_per_query_max": 30,
+  "all_selected_positive_documents_present": true,
+  "excluded_ineligible_or_duplicate_queries": 0,
+  "source_query_count": 830,
+  "source_corpus_count": 100195,
+  "qa_source": {
+    "repo": "Tevatron/browsecomp-plus",
+    "revision": "144cff8e35b5eaef7e526346aa60774a9deb941f"
+  },
+  "corpus_source": {
+    "repo": "Tevatron/browsecomp-plus-corpus",
+    "revision": "b27b02bc3e45511b8b82a13e6f90ce761df726f6"
+  },
+  "unit": "one original full document per UTF-8 text file; no text truncation",
+  "split_note": "Course-specific query split of a public benchmark, not an official train/dev/test split.",
+  "data_file_sha256": {
+    "corpus/documents.jsonl": "d54b416436fefaf3551542ea65183092c442603f2d199c231fce8fd4b8eade69",
+    "datas/dev.jsonl": "ee49ba896cdf757d9b7764f3f04eedb1b7b82e709cceebc9c1dcdd46aa2160a7",
+    "datas/dev_labels.jsonl": "1320d9f91cf244dfefdc396e98d90f2cb81f4c4fc1fcfbad3669e978496b0c8d",
+    "datas/test.jsonl": "157ba96b0e9236d2973239d915aa5454fc1d65f87dec8ea9fa1544b08e02b893",
+    "datas/train.jsonl": "49013a49d92a0f35067aa7133b188006724f8ff9b9b61feda098262869478c53",
+    "datas/train_labels.jsonl": "91f994870d4a6ec0097fc024f0016b7a3a2024a19ea3c5613f07e1b6f3d41a7b"
+  }
+}
