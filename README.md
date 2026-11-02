@@ -1,7 +1,5 @@
 # IR 2026 检索大作业
 
-本组协作入口：[两人详细分工与验收清单](TEAM_PLAN.md)。当前阶段仅覆盖两个加分项之前的基础开发、测试与初版结果；A负责BM25与证据，B负责向量检索与融合，双方各自测试并交叉复现。
-
 **当前尚未实现自研检索方法。** `records/initial_checks_*.json` 只记录上游环境检查和3题演示。公开仓库不包含课程语料、问题、标签、原始结果和轨迹；请各自通过课程渠道下载相同数据版本，将 `corpus/`、`datas/` 放在根目录后运行 `python verify_data.py --full`。重新记录初始检查可运行 `python scripts/record_initial_checks.py`。
 
 以下保留课程项目原始使用说明。

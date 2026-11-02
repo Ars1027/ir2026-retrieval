@@ -1,4 +1,8 @@
 # Course data and de-obfuscated QA stay local (see DATA_USE.md).
+# Local collaboration plans and agent prompts.
+/TEAM_PLAN.md
+/AGENT_MEMBER_A.md
+/AGENT_MEMBER_B.md
 /corpus/
 /datas/
 /output/
