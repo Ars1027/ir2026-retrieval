@@ -3,10 +3,7 @@
   "scope": "chunking, BM25, evidence, extractive answer, shared assembler",
   "python": {
     "python": "3.14.6",
-    "numpy": "2.5.1",
-    "torch": "2.13.0+cpu",
-    "transformers": "5.13.0",
-    "faiss": "1.15.1"
+    "numpy": "2.5.1"
   },
   "hardware": {
     "platform": "Windows-11-10.0.26200-SP0",
@@ -15,7 +12,7 @@
     "machine": "AMD64"
   },
   "commit": null,
-  "commit_note": "Git is not installed in this workspace, so no commit hash could be captured; the repository upload step is documented in the handover notes.",
+  "commit_note": "Repository HEAD is the source of truth for the baseline commit.",
   "config_refs": {
     "bm25": "configs/bm25.json",
     "model_example": "configs/model.example.json"
@@ -59,6 +56,7 @@
   },
   "notes": [
     "Chunking reads corpus text only; questions and labels are never opened.",
-    "Per-query latency includes the course runner's corpus initialisation (~5.6 s)."
+    "Per-query latency includes the course runner's corpus initialisation (~5.6 s).",
+    "The baseline needs Python and numpy only."
   ]
 }

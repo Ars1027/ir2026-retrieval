@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""Unified entry point for the three fixed pipelines (member B).
+"""Unified entry point for the BM25 baseline (basic task).
 
-    python scripts/run_baseline.py --method bm25 --split dev --output output/member_b/dev_bm25
-    python scripts/run_baseline.py --method hybrid --split dev --output output/member_b/dev_hybrid --check --evaluate
+    python scripts/run_baseline.py --method bm25  --split dev --output output/member_b/dev_bm25 --check --evaluate
+    python scripts/run_baseline.py --method final --split test --output output/member_b/test_base_final --check
+
+``--method bm25`` runs ``agent.bm25_solution``; ``--method final`` runs the
+default entry ``agent.solution``, which is the same BM25 path unless the given
+config enables the reserved vector hook (``vector.enabled = true``). An external
+collaborator therefore runs their backend without a new method:
+
+    python scripts/run_baseline.py --method final --config configs/vector.example.json \
+        --method-label bm25-v1+vector --split dev --output output/member_b/dev_vector
 
 The method configuration is exported through IR2026_METHOD_CONFIG because the
 course runner has no method-config flag. Existing output directories are never
@@ -23,11 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 METHODS = {
     "bm25": {"config": "configs/bm25.json", "agent": "agent.bm25_solution",
              "label": "bm25-v1", "model": None},
-    "dense": {"config": "configs/dense.json", "agent": "agent.dense_solution",
-              "label": "dense-v1", "model": None},
-    "hybrid": {"config": "configs/hybrid.json", "agent": "agent.hybrid_solution",
-               "label": "hybrid-rrf-v1", "model": None},
-    # Frozen default entry: what the final basic deliverable runs.
+    # Frozen default entry: what the basic deliverable runs.
     "final": {"config": "configs/bm25.json", "agent": "agent.solution",
               "label": "bm25-v1", "model": None},
 }

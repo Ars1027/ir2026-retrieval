@@ -13,10 +13,10 @@
   },
   "completion_rate": 1.0,
   "latency_seconds": {
-    "mean": 5.9397,
-    "p50": 5.9341,
-    "p95": 6.0495,
-    "max": 6.0938
+    "mean": 5.9934,
+    "p50": 5.9672,
+    "p95": 6.1933,
+    "max": 6.4702
   },
   "tokens": {
     "input": 0,
@@ -36,20 +36,6 @@
         "capitalized_boost": 1.25
       },
       "index_bytes": 207921873
-    },
-    "dense": {
-      "build_seconds": 223.405,
-      "encode_seconds": 216.801,
-      "vectors": 321659,
-      "dimension": 256,
-      "index_type": "faiss-flat-ip",
-      "encoder": {
-        "backend": "hashing",
-        "model": "hashed-features",
-        "revision": "n/a",
-        "pooling": "n/a"
-      },
-      "index_bytes": 668695211
     }
   },
   "citation_span_valid": true,

@@ -1,29 +1,29 @@
-# 成员 B 实现与验证记录
+# 成员 B 实现与验证记录（BM25 基础任务）
 
-本文件记录当前基础交付状态；早前一次仅完成独立模块与虚构 fixture 的记录已被本次实现取代。
+## 范围
+仓库只包含一条固定方法：BM25 基线。向量空间模型不在此实现，只在 `retrieval/interfaces.py` 预留接口，由外部协作成员在附加题 1 中接入；接口默认关闭，基线执行路径不含任何向量检索。
 
-## 已实现
-- `retrieval/embedding.py`：编码器接口，`hf`（Qwen3-Embedding-0.6B，模型卡查询指令、末位池化、L2 归一化）与 `hashing`（离线确定性回退）两种后端，`auto` 记录回退原因。
-- `retrieval/dense.py`：全量切块向量化、`faiss.IndexFlatIP`（无 FAISS 时自动退化为 NumPy 精确内积）、维度/切块指纹/语料摘要校验。
-- `retrieval/fusion.py`：文档级 RRF，`sum(1/(k+rank))`，每路每文档只计一次，保留来源排名与真实片段跨度，同分按 `doc_id` 稳定。
-- `pipeline/hybrid.py`：固定 hybrid 流水线（两路召回 → 各自文档聚合 → RRF → 共用 `assemble_result`）。
-- `agent/{dense,hybrid}_solution.py`、冻结默认入口 `agent/solution.py`、`scripts/{build_dense,run_baseline,summarize_runs}.py`、`run.sh`、`run.ps1`、两份配置与依赖入口。
+## 代码
+- `retrieval/interfaces.py`：`VectorRetriever` / `DocumentFusion` 抽象、`NullVectorRetriever` / `NullFusion` 默认实现、`validate_vector_hits` / `validate_ranked_docs` 输出校验、`"包.模块:工厂"` 后端加载、`interface_descriptor()` 机器可读规范。
+- `pipeline/vector_stage.py`：仅在配置启用向量分支时执行；顺序为 BM25 → 文档聚合 → 插件检索（校验）→ 插件融合 → 共用 `assemble_result`；插件输出非法时记录 `vector_search.errors` 并降级回纯 BM25。
+- `agent/solution.py`：默认入口；`vector.enabled=false` 时直接调用 `agent.bm25_solution.solve`，与基线执行路径和 trace 阶段完全一致。
+- `pipeline/answer.py`：两种抽取式答案策略（默认句子级；`answer.span_selection=true` 时按问句类型挑实体跨度并把引文锚定到该跨度），另有 `model` 模式备用。
+- `scripts/{run_baseline,summarize_runs}.py`、`run.sh`、`run.ps1`、`configs/{bm25,bm25.span,vector.example}.json`、`requirements/member_b.txt`（仅 numpy）、`VECTOR_PLUGIN_GUIDE.md`（协作者操作手册）。
 
-## 实际运行（本机）
-| 运行 | 目录 | 结果 |
-| --- | --- | --- |
-| dense 冒烟 train 5 | `output/member_b/train_dense_smoke` | 完成，检查通过（子集评测需 `--allow-subset`） |
-| hybrid 冒烟 train 5 | `output/member_b/train_hybrid_smoke` | 完成 |
-| hybrid dev 50 | `output/member_b/dev_hybrid` | 官方 `--submission` 检查通过，GoldHit@10 = 0.20 |
-| BM25 dev 50（只读复跑） | `output/member_b/review_bm25` | 检查通过，GoldHit@10 = 0.40 |
-| 最终 test 50 | `output/member_b/test_base_final` | 官方 `--submission` 检查通过（无标签，不计算 Hit） |
+## 验证
+| 项 | 结果 |
+| --- | --- |
+| `python -m unittest discover -s tests` | 33 项通过（课程原始） |
+| `python -m unittest discover -s tests/member_a` | 47 项通过（含答案策略） |
+| `python -m unittest discover -s tests/member_b` | 13 项通过（接口规范、非法输出、插件加载失败、基线等价性、插件端到端） |
+| dev 50（`output/member_b/dev_bm25_locked`） | Hit@1/5/10 = 0.20/0.30/0.40，EvidenceRecall@10 = 0.1999，AnswerEM = 0.00，completion = 1.00，平均 5.98 s/题 |
+| test 50（`output/member_b/test_base_final_locked`） | 50/50 `ok`，`--submission` 检查 `valid: true, errors: []` |
+| 单题 trace | `load_index → bm25_search → document_aggregate → read_evidence → answer`，全部为 `retrieval` 事件 |
 
-聚合指标见 `records/member_b/*.json`；原始结果、trace 与索引只在本地。
-
-## 资源阻塞（如实记录）
-- 本机无法访问 huggingface.co（ConnectTimeout），计划中的 `Qwen/Qwen3-Embedding-0.6B` 无法下载，因此 dense 分支使用 `hashing` 回退后端：文档与 meta 均标注 `"model": "hashed-features"` 与回退原因，**不是语义编码器**。
-- 纯 CPU（12 核，无 CUDA）。全量 321,659 个切块用 Transformer 编码在本机不可行；hashing 回退耗时 240 s，索引 668 MB。
-- 因此真实模型的 token 成本、语义召回与 GPU 构建成本均为 `null`，未编造。
-
-## 冻结决定
-RRF 实现正确且可复现（成员 A 只读复跑得到相同指标），但缺少语义编码器时 dense 分支噪声大，融合后 GoldHit@10 由 0.40 降到 0.20。最终基础交付冻结为 BM25：`agent/solution.py` → `agent/bm25_solution.py`，配置 `configs/bm25.json`。拿到可用的嵌入模型后重新执行 `python scripts/build_dense.py --backend hf` 并复跑 hybrid 命令即可重新评估。
+## 交接给外部协作成员（附加题 1）
+见 `VECTOR_PLUGIN_GUIDE.md`，要点：
+1. 实现 `retrieval.interfaces.VectorRetriever` 子类，`search(query, top_k)` 返回 `[{"doc_id", "rank", "score"}]`。
+2. 需要融合时实现 `DocumentFusion.fuse(bm25_docs, vector_docs, top_k) -> list[RankedDoc]`，并保留 `hits` 中真实的字符区间。
+3. 复制 `configs/vector.example.json`，把 `retriever` / `fusion` 改成自己的 `"包.模块:工厂"`，`enabled` 置 true。
+4. `python scripts/run_baseline.py --method final --config <自己的配置> --method-label bm25-v1+vector --split dev --output output/member_b/dev_vector --check --evaluate`。
+5. 不要修改 `agent/bm25_solution.py`、`pipeline/result_builder.py`、`agent/solution.py` 的 BM25 分支与课程原始文件。

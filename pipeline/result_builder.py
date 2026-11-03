@@ -1,4 +1,4 @@
-"""Shared result assembly for every retrieval pipeline (BM25, dense, hybrid).
+"""Shared result assembly for the retrieval pipeline (BM25 and any future branch).
 
 The assembler is retriever-agnostic: it receives a document ranking, reads the
 source text through the course corpus, cuts verbatim quotes, asks the configured
@@ -10,8 +10,8 @@ from __future__ import annotations
 import time
 
 from ir2026 import POLICY
+from pipeline import answer as answer_mod
 from pipeline import evidence as evidence_mod
-from pipeline.answer import make_answer
 
 
 def _record(tools, **kwargs) -> None:
@@ -58,9 +58,18 @@ def assemble_result(question, ranked_docs, tools, settings, source=None) -> dict
 
     max_quotes = min(int(retrieval_cfg.get("evidence_docs") or limits["max_evidence_quotes"]),
                      limits["max_evidence_quotes"])
+    answer_cfg = settings.get("answer") or {}
+    selection = {}
+    if (answer_cfg.get("mode") or "extractive") == "extractive" and answer_cfg.get("span_selection"):
+        selection = answer_mod.select_answer(question_text, ranked_docs, tools.corpus.text,
+                                             max_docs=max_quotes)
+    preferred = {selection["doc_id"]: selection["quote"]} if selection else None
     quotes = evidence_mod.build_quotes(ranked_docs, tools.corpus.text, limits,
                                        max_quotes=max_quotes,
-                                       max_docs=limits["max_doc_ids"])
+                                       max_docs=limits["max_doc_ids"],
+                                       preferred=preferred)
+    if selection and selection["doc_id"] not in {q["doc_id"] for q in quotes}:
+        selection = {}
     if not quotes:
         # SPEC.md rejects ranked documents without any evidence quote.
         doc_ids = []
@@ -72,7 +81,7 @@ def assemble_result(question, ranked_docs, tools, settings, source=None) -> dict
             doc_ids=doc_ids,
             elapsed_ms=elapsed_ms)
 
-    answered = make_answer(question_text, quotes, settings)
+    answered = answer_mod.make_answer(question_text, quotes, settings, selection=selection)
     answer = (answered.get("answer") or "").strip()
     usage = dict(answered.get("usage") or {})
     usage.setdefault("tool_calls", 0)

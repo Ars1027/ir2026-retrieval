@@ -67,22 +67,23 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(loaded["config_path"].endswith("bm25.json"))
         self.assertTrue(Path(loaded["chunks_dir"]).is_absolute())
 
-    def test_env_points_to_config_and_keeps_member_b_keys(self):
+    def test_env_points_to_config_and_keeps_vector_keys(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "hybrid.json"
+            path = Path(tmp) / "vector.json"
             path.write_text(json.dumps({
-                "method": "hybrid-test",
-                "dense_index_dir": "artifacts/member_b/dense",
-                "rrf_k": 42,
+                "method": "vector-test",
+                "vector_index_dir": "artifacts/member_b/vector",
                 "candidate_k": 50,
-                "dense": {"encoder": {"model": "some/model", "revision": "abc"}},
+                "vector": {"enabled": True,
+                           "retriever": "external.backend:create_retriever",
+                           "top_k": 40},
             }), encoding="utf-8")
             os.environ[settings_mod.ENV_VAR] = str(path)
             loaded = settings_mod.load_settings()
-        self.assertEqual(loaded["method"], "hybrid-test")
-        self.assertEqual(loaded["rrf_k"], 42)
-        self.assertEqual(loaded["dense"]["encoder"]["revision"], "abc")
-        self.assertTrue(Path(loaded["dense_index_dir"]).is_absolute())
+        self.assertEqual(loaded["method"], "vector-test")
+        self.assertEqual(loaded["vector"]["retriever"], "external.backend:create_retriever")
+        self.assertEqual(loaded["vector"]["top_k"], 40)
+        self.assertTrue(Path(loaded["vector_index_dir"]).is_absolute())
         self.assertEqual(loaded["answer"]["mode"], settings_mod.DEFAULTS["answer"]["mode"])
 
     def test_invalid_configs_raise(self):

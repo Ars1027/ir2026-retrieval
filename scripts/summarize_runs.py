@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Aggregate a run directory into whitelisted metrics (member B).
+"""Aggregate a run directory into whitelisted metrics.
 
-    python scripts/summarize_runs.py --run-dir output/member_b/dev_hybrid --split dev \
-        --out records/member_b/dev_hybrid_metrics.json
+    python scripts/summarize_runs.py --run-dir output/member_b/dev_bm25 --split dev \
+        --out records/member_b/dev_bm25_metrics.json
 
 Only aggregate numbers are written: no question text, document IDs, answers or
 quotes. Hit@k is never derived from chunk matches; it always uses
@@ -20,8 +20,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from ir2026 import Corpus, evaluate, load_policy, load_questions, read_jsonl, validate_results  # noqa: E402
-
-LATENCY_KEYS = ("elapsed_seconds",)
 
 
 def _percentile(values, fraction):
@@ -43,16 +41,14 @@ def _index_costs() -> dict:
                          "params": meta.get("params"),
                          "index_bytes": sum(p.stat().st_size
                                             for p in bm25_meta.parent.glob("*") if p.is_file())}
-    dense_meta = ROOT / "artifacts/member_b/dense/meta.json"
-    if dense_meta.is_file():
-        meta = json.loads(dense_meta.read_text(encoding="utf-8"))
-        costs["dense"] = {"build_seconds": (meta.get("build_stats") or {}).get("elapsed_seconds"),
-                          "encode_seconds": (meta.get("build_stats") or {}).get("encode_seconds"),
-                          "vectors": meta.get("vectors"), "dimension": meta.get("dimension"),
-                          "index_type": meta.get("index_type"),
-                          "encoder": {k: (meta.get("encoder") or {}).get(k)
-                                      for k in ("backend", "model", "revision", "pooling")},
-                          "index_bytes": meta.get("index_bytes")}
+    # Reserved slot: an external vector backend may write its own meta.json here.
+    vector_meta = ROOT / "artifacts/member_b/vector/meta.json"
+    if vector_meta.is_file():
+        meta = json.loads(vector_meta.read_text(encoding="utf-8"))
+        costs["vector"] = {"build_seconds": (meta.get("build_stats") or {}).get("elapsed_seconds"),
+                           "backend": (meta.get("encoder") or {}).get("backend"),
+                           "index_bytes": sum(p.stat().st_size
+                                              for p in vector_meta.parent.glob("*") if p.is_file())}
     return costs
 
 

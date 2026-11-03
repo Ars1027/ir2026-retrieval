@@ -1,0 +1,38 @@
+{
+  "method": "bm25-v1+span",
+  "chunks_dir": "artifacts/member_a/chunks",
+  "bm25_index_dir": "artifacts/member_a/bm25",
+  "vector_index_dir": "artifacts/member_b/vector",
+  "candidate_k": 200,
+  "chunking": {
+    "size": 1200,
+    "overlap": 200,
+    "min_chars": 120
+  },
+  "bm25": {
+    "k1": 0.9,
+    "b": 0.4,
+    "use_stopwords": true,
+    "capitalized_boost": 1.25
+  },
+  "vector": {
+    "enabled": false,
+    "retriever": null,
+    "fusion": null,
+    "top_k": 200,
+    "index_dir": "artifacts/member_b/vector"
+  },
+  "retrieval": {
+    "final_docs": 10,
+    "evidence_docs": 5
+  },
+  "answer": {
+    "mode": "extractive",
+    "span_selection": true,
+    "max_answer_chars": 200,
+    "model": null,
+    "base_url": null,
+    "timeout_seconds": 30,
+    "max_output_tokens": 200
+  }
+}

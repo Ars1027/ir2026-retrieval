@@ -1,0 +1,24 @@
+{
+  "include": [
+    "agent",
+    "pipeline",
+    "retrieval",
+    "scripts",
+    "tests/member_a",
+    "tests/member_b"
+  ],
+  "exclude": [
+    "corpus",
+    "datas",
+    "artifacts",
+    "output",
+    "tools",
+    "examples",
+    "licenses",
+    "**/__pycache__"
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none",
+  "pythonVersion": "3.12"
+}

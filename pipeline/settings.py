@@ -4,8 +4,8 @@
 unset the BM25 configuration is used. Relative paths inside the file are
 resolved against the project root, so a config works from any working directory.
 
-Extension keys owned by member B (dense index, RRF) are preserved verbatim; this
-loader never drops unknown keys.
+Extension keys of the optional vector branch (``vector``, ``vector_index_dir``)
+are preserved verbatim; this loader never drops unknown keys.
 """
 from __future__ import annotations
 
@@ -21,17 +21,17 @@ DEFAULTS = {
     "method": "bm25-v1",
     "chunks_dir": "artifacts/member_a/chunks",
     "bm25_index_dir": "artifacts/member_a/bm25",
-    "dense_index_dir": "artifacts/member_b/dense",
+    "vector_index_dir": "artifacts/member_b/vector",
     "candidate_k": 200,
-    "rrf_k": 60,
     "chunking": {"size": 1200, "overlap": 200, "min_chars": 120},
     "bm25": {"k1": 0.9, "b": 0.4, "use_stopwords": True, "capitalized_boost": 1.25},
+    "vector": {"enabled": False, "retriever": None, "fusion": None, "top_k": 200},
     "retrieval": {"final_docs": 10, "evidence_docs": 5},
     "answer": {"mode": "extractive", "model": None, "base_url": None,
                "timeout_seconds": 30, "max_output_tokens": 200, "max_answer_chars": 200},
 }
 
-PATH_KEYS = ("chunks_dir", "bm25_index_dir", "dense_index_dir")
+PATH_KEYS = ("chunks_dir", "bm25_index_dir", "vector_index_dir")
 
 
 class SettingsError(ValueError):
@@ -100,8 +100,6 @@ def _validate(settings: dict) -> None:
     for key in ("candidate_k",):
         if type(settings.get(key)) is not int or settings[key] < 1:
             raise SettingsError(f"{key} must be a positive integer")
-    if type(settings.get("rrf_k")) is not int or settings["rrf_k"] < 0:
-        raise SettingsError("rrf_k must be a nonnegative integer")
     retrieval = settings.get("retrieval") or {}
     if type(retrieval.get("final_docs")) is not int or not 1 <= retrieval["final_docs"] <= 10:
         raise SettingsError("retrieval.final_docs must be in [1, 10]")

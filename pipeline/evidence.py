@@ -50,12 +50,40 @@ def clip_span(text: str, start: int, end: int, min_chars: int, max_chars: int) -
     return start, end
 
 
+def window_around(text: str, start: int, end: int, min_chars: int, max_chars: int) -> tuple:
+    """Quote window that always keeps ``[start, end)`` inside the slice."""
+    n = len(text)
+    start = min(max(0, int(start)), n)
+    end = min(max(start, int(end)), n)
+    if end - start < min_chars:
+        end = min(n, start + min_chars)
+        if end - start < min_chars:
+            start = max(0, end - min_chars)
+    if end - start > max_chars:
+        # Keep the centre of the span, which is where the answer sits.
+        centre = (start + end) // 2
+        start = max(0, centre - max_chars // 2)
+        end = min(n, start + max_chars)
+        if end - start < min_chars:
+            return clip_span(text, start, end, min_chars, max_chars)
+    while start < end and text[start].isspace():
+        start += 1
+    while end > start and text[end - 1].isspace():
+        end -= 1
+    return start, end
+
+
 def build_quotes(ranked_docs: list, text_getter, limits=None, max_quotes=None,
-                 max_docs=None) -> list:
-    """Return quote records ``{doc_id, start, end, text}`` for the top documents."""
+                 max_docs=None, preferred=None) -> list:
+    """Return quote records ``{doc_id, start, end, text}`` for the top documents.
+
+    ``preferred`` maps ``doc_id`` to a ``(start, end)`` span that must be quoted
+    verbatim, used so the selected answer span always appears in the evidence.
+    """
     limits = _limits(limits)
     max_quotes = max_quotes or limits["max_evidence_quotes"]
     max_docs = max_docs or limits["max_doc_ids"]
+    preferred = preferred or {}
     quotes = []
     seen = set()
     for doc in ranked_docs[:max_docs]:
@@ -68,9 +96,13 @@ def build_quotes(ranked_docs: list, text_getter, limits=None, max_quotes=None,
             continue
         if not text:
             continue
-        hit = best_hit(doc)
-        start, end = clip_span(text, hit["start"], hit["end"],
-                               limits["min_quote_chars"], limits["max_quote_chars"])
+        if doc_id in preferred:
+            start, end = window_around(text, preferred[doc_id][0], preferred[doc_id][1],
+                                       limits["min_quote_chars"], limits["max_quote_chars"])
+        else:
+            hit = best_hit(doc)
+            start, end = clip_span(text, hit["start"], hit["end"],
+                                   limits["min_quote_chars"], limits["max_quote_chars"])
         quote = text[start:end]
         if not limits["min_quote_chars"] <= len(quote) <= limits["max_quote_chars"]:
             continue

@@ -1,5 +1,5 @@
 # Total dependency entry point for both members.
 # Member A: BM25, chunking, evidence/answer assembly.
 -r requirements/member_a.txt
-# Member B: dense encoding, FAISS, RRF, hybrid pipeline.
+# Member B: run integration, aggregation, reserved vector interface (numpy only).
 -r requirements/member_b.txt

@@ -1,48 +1,43 @@
 {
   "member": "B",
-  "scope": "dense encoding, FAISS, RRF, hybrid pipeline, run integration",
+  "scope": "run integration, aggregation, reserved vector interface",
   "python": {
     "python": "3.14.6",
-    "numpy": "2.5.1",
-    "torch": "2.13.0+cpu",
-    "transformers": "5.13.0",
-    "faiss": "1.15.1"
+    "numpy": "2.5.1"
   },
   "hardware": {
     "platform": "Windows-11-10.0.26200-SP0",
-    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
-    "cpu_count": 12,
-    "machine": "AMD64"
+    "cpu_count": 12
   },
   "commit": null,
-  "commit_note": "Git is not installed in this workspace, so no commit hash could be captured; the repository upload step is documented in the handover notes.",
-  "dense_index": {
-    "vectors": 321659,
-    "dimension": 256,
-    "index_type": "faiss-flat-ip",
-    "encoder_backend": "hashing",
-    "encoder_model": "hashed-features",
-    "encoder_revision": "n/a",
-    "fallback_reason": "OSError: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheck your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.",
-    "build_stats": {
-      "chunks": 321659,
-      "elapsed_seconds": 223.405,
-      "encode_seconds": 216.801,
-      "chunks_per_second": 1483.66
-    },
-    "index_bytes": 668695211,
-    "chunking_fingerprint": "17a7f5fbe7a29c9e"
+  "commit_note": "filled in after the baseline commit is pushed; the working tree is the source of truth for this run",
+  "baseline": {
+    "method": "bm25-v1",
+    "entry": "agent.solution -> agent.bm25_solution",
+    "config": "configs/bm25.json",
+    "method_type": "retrieval",
+    "dev_run": "output/member_b/dev_bm25_locked",
+    "test_run": "output/member_b/test_base_final_locked"
+  },
+  "reserved_interface": {
+    "module": "retrieval/interfaces.py",
+    "stage": "pipeline/vector_stage.py",
+    "default_enabled": false,
+    "enabled_by": "config key vector.enabled, backend spec 'package.module:factory'",
+    "validated_output": "list[{doc_id, rank, score}], rank 1..n, unique doc_id, finite score, len <= top_k"
   },
   "tests": {
-    "member_b": "python -m unittest discover -s tests/member_b -v"
+    "course": "python -m unittest discover -s tests -v  (33 passed)",
+    "member_a": "python -m unittest discover -s tests/member_a -v  (38 passed)",
+    "member_b": "python -m unittest discover -s tests/member_b -v  (13 passed)"
   },
   "blockers": [
-    "huggingface.co is unreachable from this machine (ConnectTimeout), so Qwen/Qwen3-Embedding-0.6B could not be downloaded and no token-level cost could be measured.",
-    "CPU-only hardware (12 cores, no CUDA); a transformer encoder over 321,659 chunks (~380 M characters) was not attempted beyond the failed model load.",
-    "Git is unavailable in the workspace; the push step is documented but not executed."
+    "No answer model is used: no API key on this machine, answer.mode = extractive, model tokens recorded as 0.",
+    "The vector-space branch is intentionally not implemented here; a plugged-in backend that returns malformed hits is recorded and the run degrades to pure BM25.",
+    "Git credentials on this machine (account Z-TianX) cannot push to Ars1027/ir2026-retrieval; the commit is prepared locally."
   ],
   "notes": [
-    "The hashing encoder is a deterministic lexical fallback, not a semantic model. Vectors, meta.json and this record all state that explicitly.",
-    "Switching to the planned model only requires network access: python scripts/build_dense.py --backend hf, then re-run the hybrid commands."
+    "Index and query stages are recorded as retrieval events, not model tool calls.",
+    "Latency includes the course runner's per-question corpus initialisation (~5.6 s)."
   ]
 }

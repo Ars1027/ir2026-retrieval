@@ -55,10 +55,16 @@ def write_chunk_store(corpus_root, out_dir, size=200, overlap=40, min_chars=20) 
     return chunking.write_chunks(corpus_root=corpus_root, out_dir=out_dir, settings=settings)
 
 
-def hashing_encoder(dimension=32) -> dict:
-    return {"backend": "hashing", "batch_size": 4,
-            "hashing": {"dimension": dimension, "char_ngrams": True,
-                        "char_weight": 0.25, "seed": 2026}}
+def build_bm25_index(corpus_root, work_dir) -> Path:
+    """Chunk store + BM25 index for integration tests; returns the index dir."""
+    from retrieval import bm25
+    work_dir = Path(work_dir)
+    chunks_dir = work_dir / "chunks"
+    write_chunk_store(corpus_root, chunks_dir)
+    index_dir = work_dir / "bm25"
+    bm25.build_index(chunks_path=chunks_dir, out_dir=index_dir,
+                     params={"k1": 0.9, "b": 0.4, "use_stopwords": False})
+    return index_dir
 
 
 class FakeCorpus:
@@ -72,8 +78,10 @@ class FakeCorpus:
         return self.texts[doc_id]
 
 
-class StubRetriever:
-    """Deterministic retriever used to test the hybrid pipeline in isolation."""
+class StubVectorRetriever:
+    """Deterministic stand-in for a plugged-in vector backend."""
+
+    name = "stub-vector"
 
     def __init__(self, hits):
         self.hits = hits
@@ -82,3 +90,8 @@ class StubRetriever:
     def search(self, query, top_k):
         self.calls.append((query, top_k))
         return self.hits[:top_k]
+
+
+def vector_hits(doc_ids):
+    return [{"doc_id": doc_id, "rank": rank, "score": 1.0 / rank}
+            for rank, doc_id in enumerate(doc_ids, 1)]

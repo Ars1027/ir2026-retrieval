@@ -1,6 +1,6 @@
 {
   "split": "dev",
-  "method": "hybrid-rrf-v1",
+  "method": "bm25-v1",
   "method_type": "retrieval",
   "model": null,
   "protocol_version": "ir2026.retrieval.v2",
@@ -13,17 +13,17 @@
   },
   "completion_rate": 1.0,
   "latency_seconds": {
-    "mean": 6.6203,
-    "p50": 6.4726,
-    "p95": 7.6153,
-    "max": 8.4849
+    "mean": 5.9837,
+    "p50": 5.9713,
+    "p95": 6.0484,
+    "max": 6.2771
   },
   "tokens": {
     "input": 0,
     "output": 0,
     "queries_with_unknown_tokens": 0
   },
-  "trace_events_total": 350,
+  "trace_events_total": 250,
   "index_costs": {
     "bm25": {
       "build_seconds": 113.962,
@@ -36,20 +36,6 @@
         "capitalized_boost": 1.25
       },
       "index_bytes": 207921873
-    },
-    "dense": {
-      "build_seconds": 223.405,
-      "encode_seconds": 216.801,
-      "vectors": 321659,
-      "dimension": 256,
-      "index_type": "faiss-flat-ip",
-      "encoder": {
-        "backend": "hashing",
-        "model": "hashed-features",
-        "revision": "n/a",
-        "pooling": "n/a"
-      },
-      "index_bytes": 668695211
     }
   },
   "citation_span_valid": true,
@@ -59,12 +45,12 @@
   ],
   "metrics": {
     "queries": 50,
-    "gold_hit_at_1": 0.02,
-    "gold_hit_at_5": 0.12,
-    "gold_hit_at_10": 0.2,
-    "evidence_recall_at_10": 0.07838888888888888,
+    "gold_hit_at_1": 0.2,
+    "gold_hit_at_5": 0.3,
+    "gold_hit_at_10": 0.4,
+    "evidence_recall_at_10": 0.19988888888888887,
     "answer_em": 0.0,
     "completion_rate": 1.0,
-    "mean_elapsed_seconds": 6.620282
+    "mean_elapsed_seconds": 5.983732
   }
 }
