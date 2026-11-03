@@ -1,0 +1,44 @@
+{
+  "artefact": "artifacts/member_b/dense",
+  "format": "dense.v1",
+  "vectors": 321659,
+  "dimension": 256,
+  "index_type": "faiss-flat-ip",
+  "normalize": true,
+  "encoder": {
+    "backend": "hashing",
+    "dimension": 256,
+    "normalize": true,
+    "requested_backend": "auto",
+    "max_length": 512,
+    "model": "hashed-features",
+    "revision": "n/a",
+    "pooling": "n/a",
+    "fallback_reason": "OSError: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheck your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.",
+    "hashing": {
+      "dimension": 256,
+      "char_ngrams": true,
+      "char_weight": 0.25,
+      "seed": 2026
+    },
+    "note": "Offline lexical hashing fallback, not a semantic model. Replace with the hf backend when the planned embedding model is available."
+  },
+  "build_stats": {
+    "chunks": 321659,
+    "elapsed_seconds": 223.405,
+    "encode_seconds": 216.801,
+    "chunks_per_second": 1483.66
+  },
+  "index_bytes": 668695211,
+  "chunking_fingerprint": "17a7f5fbe7a29c9e",
+  "corpus": {
+    "documents": 10000,
+    "manifest_sha256": "d54b416436fefaf3551542ea65183092c442603f2d199c231fce8fd4b8eade69",
+    "root": "D:\\IR\\IR_2026_Project\\corpus"
+  },
+  "commands": [
+    "python scripts/build_chunks.py",
+    "python scripts/build_bm25.py",
+    "python scripts/build_dense.py"
+  ]
+}

@@ -1,3 +1,5 @@
-# Member A must deliver requirements/member_a.txt before full installation.
+# Total dependency entry point for both members.
+# Member A: BM25, chunking, evidence/answer assembly.
 -r requirements/member_a.txt
+# Member B: dense encoding, FAISS, RRF, hybrid pipeline.
 -r requirements/member_b.txt

@@ -1,12 +1,17 @@
-"""Implement any retrieval method here, or export the same format independently.
+"""Default course entry point (member B).
 
-solve(question, tools, config) receives no answer labels. The tools object exposes
-search(terms, match_all=False, limit=10) and read(doc_id, start=0, max_chars=2000).
-Return answer, ordered doc_ids, evidence, status and available model token usage.
-For an external index, use tools.record_retrieval() to record actual stages.
-The runner passes method_type and model in config. Models and harnesses are optional.
-This student entry intentionally has no completed assignment implementation.
+Frozen choice for the basic deliverable: BM25 + verbatim evidence + extractive
+short answers. The hybrid pipeline is available through ``configs/hybrid.json``
+(``agent.hybrid_solution``) and dense diagnostics through ``configs/dense.json``.
+It is not the default because the dense branch could not use the planned
+semantic encoder on the machine used for these runs (no access to the model
+hub), and the measured dev GoldHit@10 of that hybrid branch was lower than the
+BM25 baseline. See ``records/member_b/`` for the numbers.
 """
+from __future__ import annotations
 
-def solve(question,tools,config):
-    raise NotImplementedError('Implement your retrieval method, or export results according to SPEC.md.')
+from agent import bm25_solution
+
+
+def solve(question, tools, config):
+    return bm25_solution.solve(question, tools, config)

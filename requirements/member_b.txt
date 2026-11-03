@@ -1,5 +1,7 @@
-numpy==2.4.4
-faiss-cpu==1.13.0
-sentence-transformers==5.1.2
-transformers==4.57.1
-torch==2.9.0
+# Member B (dense encoding, FAISS, RRF, hybrid pipeline)
+numpy>=1.26,<3
+faiss-cpu>=1.9
+torch>=2.2
+transformers>=4.44
+sentencepiece>=0.1.99
+huggingface-hub>=0.24

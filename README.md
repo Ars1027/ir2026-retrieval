@@ -1,9 +1,5 @@
 # IR 2026 检索大作业
 
-**成员 B 的向量检索与混合检索模块正在接入；正式基线尚未完成。** `records/initial_checks_*.json` 只记录上游环境检查和3题演示。公开仓库不包含课程语料、问题、标签、原始结果和轨迹；请各自通过课程渠道下载相同数据版本，将 `corpus/`、`datas/` 放在根目录后运行 `python verify_data.py --full`。重新记录初始检查可运行 `python scripts/record_initial_checks.py`。
-
-以下保留课程项目原始使用说明。
-
 本项目提供固定课程数据、语料访问工具、批量运行入口、结果检查和评测程序。给定自然语言问题 Q 与本地语料 D，设计并实现检索方法，返回能够支持回答 Q 的相关文档、简短答案和原文引用，在统一数据划分与评测规范下比较效果、成本和失败原因。
 
 **方法与框架不限，不要求使用 harness 或大模型，基础任务不要求训练模型。** 关键词、BM25、向量检索、混合检索、重排序和 Agent 检索均可。DCI 只是可参考的研究路线，不是指定实现方式。
@@ -155,17 +151,53 @@ Agent 方法使用对应的 `--method-type agent --model-label ...` 参数。测
 
 旧版未标注事件类型的演示结果仍可读取，按旧版工具计数解释；新实验请使用本版协议，避免混用统计口径。数据来源与许可见 `DATA_USE.md`，协议细节见 `SPEC.md`，更新说明见 `CHANGELOG.md`。
 
-## 成员 B 固定流水线入口
+## 本组基础实现（BM25 / dense / hybrid）
 
-先由成员 A 交付公共模块、`requirements/member_a.txt`、切块与 BM25 索引，再安装 `python -m pip install -r requirements.txt`。模型、索引和实验目录只保存在本地。方法配置通过 `IR2026_METHOD_CONFIG` 传给课程运行器，固定预算不变。
+三个固定流水线共用一套证据、答案与结果组装代码；每题仍是 `retrieval` 事件，不使用模型自主工具交互。
 
-```bash
-python scripts/run_baseline.py --method dense --split train --limit 3 --output output/member_b/dense_train_v1
-python scripts/run_baseline.py --method hybrid --split dev --output output/member_b/hybrid_dev_v1
-python check_results.py --split dev --run-dir output/member_b/hybrid_dev_v1 --submission
-python evaluate.py --split dev --run-dir output/member_b/hybrid_dev_v1
-python scripts/summarize_runs.py --run-dir output/member_b/hybrid_dev_v1 --output records/member_b/hybrid_dev_v1.json
-python -m unittest discover -s tests/member_b -v
+```text
+retrieval/contracts.py           Chunk / Hit / RankedDoc 字段与校验
+retrieval/corpus_adapter.py      只读语料访问
+retrieval/chunking.py            保真切块（原文[start:end]）与稳定 chunk_id
+retrieval/bm25.py                倒排索引、BM25Retriever
+retrieval/document_rank.py       片段到文档的稳定聚合
+retrieval/embedding.py           编码器（hf / hashing）
+retrieval/dense.py               FAISS 精确内积索引、DenseRetriever
+retrieval/fusion.py              文档级 RRF
+pipeline/settings.py             IR2026_METHOD_CONFIG 配置读取
+pipeline/evidence.py             逐字原文引用
+pipeline/answer.py               extractive / model 两种答案策略
+pipeline/model_client.py         OpenAI 兼容客户端（密钥读环境变量）
+pipeline/result_builder.py       共用 assemble_result
+pipeline/hybrid.py               固定 hybrid 流水线
+agent/{bm25,dense,hybrid}_solution.py, agent/solution.py  课程适配器与默认入口
 ```
 
-支持 `--method bm25|dense|hybrid` 和 `--config 配置路径`；输出目录必须为空。Windows 可用 `./run.ps1`，其他平台可用 `bash run.sh`，参数相同。正式完整 dev 和交叉复核完成后才可将配置标记 `frozen: true`，运行全量 test；当前不满足冻结条件。汇总只输出白名单聚合字段，未知 token/费用/构建加载成本保留 null；课程评测前不报告检索指标。
+构建（产物写入 `artifacts/`，不提交）：
+
+```bash
+python scripts/build_chunks.py
+python scripts/build_bm25.py
+python scripts/build_dense.py
+```
+
+运行（`IR2026_METHOD_CONFIG` 由脚本自动导出，输出目录必须为空）：
+
+```bash
+python scripts/run_baseline.py --method bm25   --split dev --output output/member_b/dev_bm25   --check --evaluate
+python scripts/run_baseline.py --method dense  --split dev --output output/member_b/dev_dense  --check --evaluate
+python scripts/run_baseline.py --method hybrid --split dev --output output/member_b/dev_hybrid --check --evaluate
+python scripts/run_baseline.py --method final  --split test --output output/member_b/test_base_final --check
+bash run.sh --method hybrid --split dev --output output/member_b/dev_hybrid      # 或 .\run.ps1 ...
+```
+
+汇总与测试：
+
+```bash
+python scripts/summarize_runs.py --run-dir output/member_b/dev_hybrid --split dev
+python -m unittest discover -s tests -v            # 课程原始测试
+python -m unittest discover -s tests/member_a -v   # 成员A模块测试
+python -m unittest discover -s tests/member_b -v   # 成员B模块测试
+```
+
+接口约定：`start/end` 为 `Corpus.text(doc_id)` 的 Python 字符位置，`doc_id` 保持课程原始字符串，`rank` 从 1 开始，`score` 仅在同一召回器内可比。`agent/solution.py` 是冻结的默认入口（当前为 BM25）；`configs/hybrid.json` 与 `configs/dense.json` 保留给需要真实语义编码器的实验，索引元数据会记录实际使用的编码器。

@@ -1,0 +1,64 @@
+{
+  "member": "A",
+  "scope": "chunking, BM25, evidence, extractive answer, shared assembler",
+  "python": {
+    "python": "3.14.6",
+    "numpy": "2.5.1",
+    "torch": "2.13.0+cpu",
+    "transformers": "5.13.0",
+    "faiss": "1.15.1"
+  },
+  "hardware": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cpu_count": 12,
+    "machine": "AMD64"
+  },
+  "commit": null,
+  "commit_note": "Git is not installed in this workspace, so no commit hash could be captured; the repository upload step is documented in the handover notes.",
+  "config_refs": {
+    "bm25": "configs/bm25.json",
+    "model_example": "configs/model.example.json"
+  },
+  "config_digest_bm25": {
+    "k1": 0.9,
+    "b": 0.4,
+    "use_stopwords": true,
+    "capitalized_boost": 1.25
+  },
+  "chunks": {
+    "documents": 10000,
+    "chunks": 321659,
+    "chunk_chars": 379537338,
+    "chunking": {
+      "size": 1200,
+      "overlap": 200,
+      "min_chars": 120,
+      "version": "chunks.v1"
+    },
+    "chunking_fingerprint": "17a7f5fbe7a29c9e",
+    "corpus_documents": 10000,
+    "corpus_manifest_sha256": "d54b416436fefaf3551542ea65183092c442603f2d199c231fce8fd4b8eade69"
+  },
+  "bm25_index": {
+    "chunks": 321659,
+    "terms": 842329,
+    "postings": 29159319,
+    "params": {
+      "k1": 0.9,
+      "b": 0.4,
+      "use_stopwords": true,
+      "capitalized_boost": 1.25
+    },
+    "build_seconds": 113.962,
+    "index_bytes": 207921873
+  },
+  "tests": {
+    "member_a": "python -m unittest discover -s tests/member_a -v",
+    "course": "python -m unittest discover -s tests -v"
+  },
+  "notes": [
+    "Chunking reads corpus text only; questions and labels are never opened.",
+    "Per-query latency includes the course runner's corpus initialisation (~5.6 s)."
+  ]
+}

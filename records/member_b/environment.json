@@ -1,0 +1,48 @@
+{
+  "member": "B",
+  "scope": "dense encoding, FAISS, RRF, hybrid pipeline, run integration",
+  "python": {
+    "python": "3.14.6",
+    "numpy": "2.5.1",
+    "torch": "2.13.0+cpu",
+    "transformers": "5.13.0",
+    "faiss": "1.15.1"
+  },
+  "hardware": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cpu_count": 12,
+    "machine": "AMD64"
+  },
+  "commit": null,
+  "commit_note": "Git is not installed in this workspace, so no commit hash could be captured; the repository upload step is documented in the handover notes.",
+  "dense_index": {
+    "vectors": 321659,
+    "dimension": 256,
+    "index_type": "faiss-flat-ip",
+    "encoder_backend": "hashing",
+    "encoder_model": "hashed-features",
+    "encoder_revision": "n/a",
+    "fallback_reason": "OSError: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheck your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.",
+    "build_stats": {
+      "chunks": 321659,
+      "elapsed_seconds": 223.405,
+      "encode_seconds": 216.801,
+      "chunks_per_second": 1483.66
+    },
+    "index_bytes": 668695211,
+    "chunking_fingerprint": "17a7f5fbe7a29c9e"
+  },
+  "tests": {
+    "member_b": "python -m unittest discover -s tests/member_b -v"
+  },
+  "blockers": [
+    "huggingface.co is unreachable from this machine (ConnectTimeout), so Qwen/Qwen3-Embedding-0.6B could not be downloaded and no token-level cost could be measured.",
+    "CPU-only hardware (12 cores, no CUDA); a transformer encoder over 321,659 chunks (~380 M characters) was not attempted beyond the failed model load.",
+    "Git is unavailable in the workspace; the push step is documented but not executed."
+  ],
+  "notes": [
+    "The hashing encoder is a deterministic lexical fallback, not a semantic model. Vectors, meta.json and this record all state that explicitly.",
+    "Switching to the planned model only requires network access: python scripts/build_dense.py --backend hf, then re-run the hybrid commands."
+  ]
+}

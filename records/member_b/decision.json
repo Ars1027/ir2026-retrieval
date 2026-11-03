@@ -1,0 +1,21 @@
+{
+  "frozen_method": "bm25-v1",
+  "frozen_entry": "agent.solution -> agent.bm25_solution",
+  "frozen_config": "configs/bm25.json",
+  "candidates": [
+    {
+      "method": "bm25-v1",
+      "dev_gold_hit_at_10": 0.4,
+      "dev_gold_hit_at_1": 0.2,
+      "dev_evidence_recall_at_10": 0.1999
+    },
+    {
+      "method": "hybrid-rrf-v1",
+      "dev_gold_hit_at_10": 0.2,
+      "dev_gold_hit_at_1": 0.02,
+      "dev_evidence_recall_at_10": 0.0784
+    }
+  ],
+  "reason": "RRF was implemented per contract and reproduces deterministically, but the dense branch could not use the planned Qwen3 embedding model on this machine; its hashed lexical fallback produced a noisy ranking that lowered GoldHit@10 from 0.40 to 0.20. The frozen default therefore stays on BM25 until a real semantic encoder is available.",
+  "selection_data": "dev split only; the test split was run once after freezing."
+}
