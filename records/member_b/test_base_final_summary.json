@@ -1,0 +1,48 @@
+{
+  "split": "test",
+  "method": "bm25-v1",
+  "method_type": "retrieval",
+  "model": null,
+  "protocol_version": "ir2026.retrieval.v2",
+  "queries": 50,
+  "expected_queries": 50,
+  "validation_errors": 0,
+  "validation_error_sample": [],
+  "status_counts": {
+    "ok": 50
+  },
+  "completion_rate": 1.0,
+  "latency_seconds": {
+    "mean": 5.9934,
+    "p50": 5.9672,
+    "p95": 6.1933,
+    "max": 6.4702
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "queries_with_unknown_tokens": 0
+  },
+  "trace_events_total": 250,
+  "index_costs": {
+    "bm25": {
+      "build_seconds": 113.962,
+      "chunks": 321659,
+      "terms": 842329,
+      "params": {
+        "k1": 0.9,
+        "b": 0.4,
+        "use_stopwords": true,
+        "capitalized_boost": 1.25
+      },
+      "index_bytes": 207921873
+    }
+  },
+  "citation_span_valid": true,
+  "notes": [
+    "Hit@k uses document IDs from ir2026.evaluate.",
+    "Latency includes the course runner's per-question corpus initialisation."
+  ],
+  "metrics": null,
+  "metrics_note": "No labels are available for this split; Hit@k and AnswerEM are not computed locally. Report status/latency only."
+}

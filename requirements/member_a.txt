@@ -1,0 +1,4 @@
+# Member A (BM25, chunking, evidence, answer assembly)
+# Python 3.10+ standard library is enough for the pipeline itself; NumPy powers
+# the inverted-index arrays.
+numpy>=1.26,<3

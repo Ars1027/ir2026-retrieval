@@ -1,9 +1,5 @@
 # IR 2026 检索大作业
 
-**成员 B 的向量检索与混合检索模块正在接入；正式基线尚未完成。** `records/initial_checks_*.json` 只记录上游环境检查和3题演示。公开仓库不包含课程语料、问题、标签、原始结果和轨迹；请各自通过课程渠道下载相同数据版本，将 `corpus/`、`datas/` 放在根目录后运行 `python verify_data.py --full`。重新记录初始检查可运行 `python scripts/record_initial_checks.py`。
-
-以下保留课程项目原始使用说明。
-
 本项目提供固定课程数据、语料访问工具、批量运行入口、结果检查和评测程序。给定自然语言问题 Q 与本地语料 D，设计并实现检索方法，返回能够支持回答 Q 的相关文档、简短答案和原文引用，在统一数据划分与评测规范下比较效果、成本和失败原因。
 
 **方法与框架不限，不要求使用 harness 或大模型，基础任务不要求训练模型。** 关键词、BM25、向量检索、混合检索、重排序和 Agent 检索均可。DCI 只是可参考的研究路线，不是指定实现方式。
@@ -155,17 +151,150 @@ Agent 方法使用对应的 `--method-type agent --model-label ...` 参数。测
 
 旧版未标注事件类型的演示结果仍可读取，按旧版工具计数解释；新实验请使用本版协议，避免混用统计口径。数据来源与许可见 `DATA_USE.md`，协议细节见 `SPEC.md`，更新说明见 `CHANGELOG.md`。
 
-## 成员 B 固定流水线入口
+## 本组基础实现（BM25 Baseline）
 
-先由成员 A 交付公共模块、`requirements/member_a.txt`、切块与 BM25 索引，再安装 `python -m pip install -r requirements.txt`。模型、索引和实验目录只保存在本地。方法配置通过 `IR2026_METHOD_CONFIG` 传给课程运行器，固定预算不变。
+基础任务是纯 BM25 流水线：保真切块、倒排检索、片段到文档聚合、逐字原文引用和抽取式短答案。每题仍是 `retrieval` 事件，不使用模型自主工具交互。
 
-```bash
-python scripts/run_baseline.py --method dense --split train --limit 3 --output output/member_b/dense_train_v1
-python scripts/run_baseline.py --method hybrid --split dev --output output/member_b/hybrid_dev_v1
-python check_results.py --split dev --run-dir output/member_b/hybrid_dev_v1 --submission
-python evaluate.py --split dev --run-dir output/member_b/hybrid_dev_v1
-python scripts/summarize_runs.py --run-dir output/member_b/hybrid_dev_v1 --output records/member_b/hybrid_dev_v1.json
-python -m unittest discover -s tests/member_b -v
+```text
+retrieval/contracts.py           Chunk / Hit / RankedDoc 字段与校验
+retrieval/corpus_adapter.py      只读语料访问
+retrieval/chunking.py            保真切块（原文[start:end]）与稳定 chunk_id
+retrieval/bm25.py                倒排索引、BM25Retriever
+retrieval/document_rank.py       片段到文档的稳定聚合
+retrieval/interfaces.py          【预留】向量空间模型接口与配置解析
+pipeline/settings.py             IR2026_METHOD_CONFIG 配置读取
+pipeline/evidence.py             逐字原文引用
+pipeline/answer.py               extractive / model 两种答案策略
+pipeline/model_client.py         OpenAI 兼容客户端（密钥读环境变量）
+pipeline/result_builder.py       共用 assemble_result
+pipeline/vector_stage.py         【预留】向量分支与融合的执行位置（默认不启用）
+agent/bm25_solution.py           BM25 课程适配器
+agent/solution.py                默认入口：BM25；仅当配置启用向量分支时走 vector_stage
 ```
 
-支持 `--method bm25|dense|hybrid` 和 `--config 配置路径`；输出目录必须为空。Windows 可用 `./run.ps1`，其他平台可用 `bash run.sh`，参数相同。正式完整 dev 和交叉复核完成后才可将配置标记 `frozen: true`，运行全量 test；当前不满足冻结条件。汇总只输出白名单聚合字段，未知 token/费用/构建加载成本保留 null；课程评测前不报告检索指标。
+构建（产物写入 `artifacts/`，不提交）：
+
+```bash
+python scripts/build_chunks.py
+python scripts/build_bm25.py
+```
+
+运行（`IR2026_METHOD_CONFIG` 由脚本自动导出，输出目录必须为空）：
+
+```bash
+python scripts/run_baseline.py --method bm25  --split dev --output output/member_b/dev_bm25  --check --evaluate
+python scripts/run_baseline.py --method final --split test --output output/member_b/test_base_final --check
+bash run.sh --method bm25 --split dev --output output/member_b/dev_bm25      # 或 .\run.ps1 ...
+```
+
+汇总与测试：
+
+```bash
+python scripts/summarize_runs.py --run-dir output/member_b/dev_bm25 --split dev
+python -m unittest discover -s tests -v            # 课程原始测试
+python -m unittest discover -s tests/member_a -v   # 成员A模块测试
+python -m unittest discover -s tests/member_b -v   # 成员B模块测试（含预留接口）
+```
+
+接口约定：`start/end` 为 `Corpus.text(doc_id)` 的 Python 字符位置，`doc_id` 保持课程原始字符串，`rank` 从 1 开始，`score` 仅在同一召回器内可比。
+
+### 预留接口：向量空间模型（附加题 1 接入点）
+
+接口定义在 `retrieval/interfaces.py`，示例配置见 `configs/vector.example.json`。默认配置 `configs/bm25.json` 中 `vector.enabled = false`，因此基础任务只会执行 BM25 代码路径。
+
+外部协作成员的完整操作手册（接口规范、接入步骤、评测协议、验收标准、推荐方法）：**`VECTOR_PLUGIN_GUIDE.md`**。
+
+```python
+# 1) 文档级向量检索器（必须继承 retrieval.interfaces.VectorRetriever）
+class MyVector(interfaces.VectorRetriever):
+    name = "my-vector"
+    def search(self, query: str, top_k: int) -> list[dict]:
+        # 返回 [{"doc_id": str, "rank": int, "score": float}, ...]
+        ...
+    def describe(self) -> dict:          # 写进 trace/记录的非敏感元数据
+        return {"name": self.name, "model": "...", "revision": "..."}
+
+def create_retriever(settings: dict) -> MyVector:   # 工厂函数名可自定义
+    return MyVector()
+
+# 2) 文档级融合（可选，必须继承 retrieval.interfaces.DocumentFusion）
+class MyFusion(interfaces.DocumentFusion):
+    def fuse(self, bm25_docs, vector_docs, top_k) -> list:   # list[RankedDoc]
+        ...
+```
+
+输出约束（`retrieval.interfaces.validate_vector_hits` 会校验）：`len(hits) <= top_k`；`rank` 从 1 连续编号；`doc_id` 为课程原始字符串且不重复；`score` 为有限浮点数，越大越相关。接入方式：在方法配置里写 `"vector": {"enabled": true, "retriever": "包名.模块:create_retriever", "fusion": "包名.模块:create_fusion", "top_k": 100}`，然后用默认入口运行：
+
+```bash
+python scripts/run_baseline.py --method final --config my_vector_config.json \
+    --method-label bm25-v1+vector --split dev --output output/member_b/dev_vector --check --evaluate
+```
+
+外部实现返回非法结构或抛错时，`pipeline/vector_stage.py` 会记录 `vector_search` 事件中的 `errors`，并降级回纯 BM25 排名，不会中断整轮运行；BM25 适配器、证据/答案组装和课程运行器都不需要改动。
+
+## 运行结果（BM25 基线，本机实测）
+
+原始产物全部在 `output/` 下，因含题目原文与语料引用（见 `DATA_USE.md`）不进入公开仓库；仓库内只保留聚合数字 `records/member_b/*.json`，下表即这些聚合值。
+
+### dev 50（有标签，`evaluate.py`）
+
+运行目录 `output/member_b/dev_bm25_locked`，命令见上文 `--method final --split dev`。
+
+| 指标 | 数值 |
+| --- | --- |
+| GoldHit@1 | 0.20（10/50 题） |
+| GoldHit@5 | 0.30（15/50 题） |
+| **GoldHit@10（主指标）** | **0.40（20/50 题）** |
+| EvidenceRecall@10 | 0.1999 |
+| AnswerEM | 0.00 |
+| completion_rate | 1.00 |
+| citation_span_match_rate | 1.00 |
+| validation_errors | 0 |
+| 平均耗时 | 5.98 s/题（p50 5.97 / p95 6.05 / max 6.28） |
+| 模型 token | 输入 0 / 输出 0（extractive，无 LLM） |
+| trace 事件 | 250 条 = 50 题 × 5 阶段，全部 `retrieval` |
+
+单题阶段耗时均值：`load_index 556.3 ms`、`bm25_search 32.6 ms`、`document_aggregate 0.5 ms`、`read_evidence 3.4 ms`、`answer 0.0 ms`。
+
+### test 50（无本地标签，只报状态）
+
+运行目录 `output/member_b/test_base_final_locked`，`check_results.py --submission` → `valid: true, errors: []`。
+
+| 项 | 数值 |
+| --- | --- |
+| status | `ok: 50`（completion_rate 1.00） |
+| 每题文档数 / 引用数 | 10.0 / 5.0 |
+| validation_errors | 0 |
+| 平均耗时 | 5.99 s/题（p95 6.19 / max 6.47） |
+
+### 索引与规模
+
+| 项 | 数值 |
+| --- | --- |
+| 语料 | 10,000 篇 |
+| 片段 | 321,659（size 1200 / overlap 200 / min_chars 120） |
+| 词表 / postings | 842,329 / 29,159,319 |
+| 索引体积 / 构建耗时 | 208 MB / 113.96 s |
+| BM25 参数 | `k1=0.9`、`b=0.4`、`use_stopwords=true`、`capitalized_boost=1.25` |
+
+### 答案策略实验（AnswerEM）
+
+`pipeline/answer.py` 支持两种抽取式策略，用 `answer.span_selection` 切换：
+
+| 配置 | dev 50 AnswerEM | 答案长度中位数 | Hit@10 | EvidenceRecall@10 | completion |
+| --- | --- | --- | --- | --- | --- |
+| 默认（句子级抽取）`configs/bm25.json` | 0.00 | 150 字符 | 0.40 | 0.1999 | 1.00 |
+| 类型化短跨度 `configs/bm25.span.json` | 0.00 | 12.5 字符 | 0.40 | 0.1999 | 1.00 |
+
+短跨度策略按问句推断答案类型（标题 / 人名 / 机构 / 数量 / 日期），在校验通过的检索文档里挑实体跨度，并把证据引文锚定在该跨度所在句子；`doc_ids` 与证据文档集合与基线逐题一致（50/50），答案 50/50 落在自身引文中。**AnswerEM 没有提升**：金标答案只出现在 8/50 题现有引文中、20/50 题在 top-10 文档正文里，能生成的候选中有 13/20 恰好等于金标字符串，但这些文档里 0/20 存在 `titled/named/quoted` 之类线索，30–60 个候选之间无法可靠判定边界，精确匹配仍为 0。要真正提高 AnswerEM 需要语义生成（`answer.mode = "model"`），本机无密钥，未执行。
+
+### 结果文件在哪
+
+| 内容 | 路径 |
+| --- | --- |
+| dev 指标（evaluate 原始输出） | `output/member_b/dev_bm25_locked/metrics.json` |
+| dev 逐题明细（命中/证据/耗时） | `output/member_b/dev_bm25_locked/per_query.csv` |
+| 运行签名（方法、协议、limit） | `output/member_b/{dev_bm25_locked,test_base_final_locked}/run_info.json` |
+| 每题结果与日志（含原文引用，仅本地） | `output/member_b/*/results.jsonl`、`output/member_b/*/traces/` |
+| 配置快照 | `output/member_b/*/method_config.json` |
+| 可提交的聚合记录 | `records/member_b/dev_bm25_metrics.json`、`records/member_b/test_base_final_summary.json`、`records/member_b/decision.json` |

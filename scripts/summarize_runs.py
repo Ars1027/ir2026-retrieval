@@ -1,50 +1,131 @@
-"""Export only aggregate statistics; no questions, answers, IDs or traces."""
+#!/usr/bin/env python3
+"""Aggregate a run directory into whitelisted metrics.
+
+    python scripts/summarize_runs.py --run-dir output/member_b/dev_bm25 --split dev \
+        --out records/member_b/dev_bm25_metrics.json
+
+Only aggregate numbers are written: no question text, document IDs, answers or
+quotes. Hit@k is never derived from chunk matches; it always uses
+``ir2026.evaluate`` on the document ranking.
+"""
+from __future__ import annotations
+
 import argparse
-from collections import Counter
 import json
-import math
-from pathlib import Path
 import statistics
+import sys
+from pathlib import Path
 
-METRICS = ("gold_hit_at_1", "gold_hit_at_5", "gold_hit_at_10", "evidence_recall_at_10", "answer_em", "evaluation_scope", "full_split_queries")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from ir2026 import Corpus, evaluate, load_policy, load_questions, read_jsonl, validate_results  # noqa: E402
 
 
-def summarize(run_dir):
-    run_dir = Path(run_dir)
-    rows = [json.loads(line) for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+def _percentile(values, fraction):
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, int(round(fraction * (len(ordered) - 1))))
+    return ordered[index]
+
+
+def _index_costs() -> dict:
+    """Build/load costs recorded in local index metadata (read-only)."""
+    costs = {}
+    bm25_meta = ROOT / "artifacts/member_a/bm25/meta.json"
+    if bm25_meta.is_file():
+        meta = json.loads(bm25_meta.read_text(encoding="utf-8"))
+        costs["bm25"] = {"build_seconds": (meta.get("build_stats") or {}).get("build_seconds"),
+                         "chunks": meta.get("chunks"), "terms": meta.get("terms"),
+                         "params": meta.get("params"),
+                         "index_bytes": sum(p.stat().st_size
+                                            for p in bm25_meta.parent.glob("*") if p.is_file())}
+    # Reserved slot: an external vector backend may write its own meta.json here.
+    vector_meta = ROOT / "artifacts/member_b/vector/meta.json"
+    if vector_meta.is_file():
+        meta = json.loads(vector_meta.read_text(encoding="utf-8"))
+        costs["vector"] = {"build_seconds": (meta.get("build_stats") or {}).get("elapsed_seconds"),
+                           "backend": (meta.get("encoder") or {}).get("backend"),
+                           "index_bytes": sum(p.stat().st_size
+                                              for p in vector_meta.parent.glob("*") if p.is_file())}
+    return costs
+
+
+def summarize(run_dir: Path, split: str, with_labels: bool) -> dict:
     info = json.loads((run_dir / "run_info.json").read_text(encoding="utf-8"))
-    times = sorted(r["usage"]["elapsed_seconds"] for r in rows)
-    result = {"queries": len(rows), "split": info["split"], "model": info.get("model"),
-              "status_counts": dict(Counter(r["status"] for r in rows)),
-              "mean_seconds": statistics.mean(times) if times else None,
-              "p50_seconds": statistics.median(times) if times else None,
-              "p95_seconds": times[math.ceil(.95 * len(times))-1] if times else None,
-              "percentile_method": "p50 median; p95 nearest rank",
-              "cost": None, "cost_note": "No billing evidence available",
-              "build_seconds": None, "load_seconds": None,
-              "index_cost_note": "Not measured by the course result schema"}
-    for key in ("model_input_tokens", "model_output_tokens"):
-        values = [r.get("usage", {}).get(key) for r in rows]
-        result[key] = sum(values) if all(v is not None for v in values) else None
-    result["token_note"] = "Totals are null if any query has unknown usage"
-    metrics_path = run_dir / "metrics.json"
-    metrics = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.exists() else {}
-    result.update({key: metrics.get(key) for key in METRICS})
-    if not metrics:
-        result["metric_note"] = "Official evaluation has not been run; test labels are unavailable"
-    return result
+    results = read_jsonl(run_dir / "results.jsonl")
+    questions = load_questions(ROOT / "datas" / f"{split}.jsonl")
+    config = load_policy(ROOT / "configs/default.json")
+    errors = validate_results(questions, results, Corpus(ROOT / "corpus"),
+                              config["limits"], run_dir / "traces",
+                              method_type=info.get("method_type"))
+    latencies = [row.get("usage", {}).get("elapsed_seconds") for row in results]
+    latencies = [float(value) for value in latencies if isinstance(value, (int, float))]
+    statuses = {}
+    for row in results:
+        statuses[row.get("status")] = statuses.get(row.get("status"), 0) + 1
+    tokens_in = sum((row.get("usage", {}).get("model_input_tokens") or 0) for row in results)
+    tokens_out = sum((row.get("usage", {}).get("model_output_tokens") or 0) for row in results)
+    unknown_tokens = sum(1 for row in results
+                         if row.get("usage", {}).get("model_input_tokens") is None)
+    summary = {
+        "split": split,
+        "method": info.get("method"),
+        "method_type": info.get("method_type"),
+        "model": info.get("model"),
+        "protocol_version": info.get("protocol_version"),
+        "queries": len(results),
+        "expected_queries": len(questions),
+        "validation_errors": len(errors),
+        "validation_error_sample": errors[:5],
+        "status_counts": statuses,
+        "completion_rate": statuses.get("ok", 0) / max(len(results), 1),
+        "latency_seconds": {
+            "mean": round(statistics.fmean(latencies), 4) if latencies else None,
+            "p50": _percentile(latencies, 0.5),
+            "p95": _percentile(latencies, 0.95),
+            "max": max(latencies) if latencies else None,
+        },
+        "tokens": {"input": tokens_in, "output": tokens_out,
+                   "queries_with_unknown_tokens": unknown_tokens},
+        "trace_events_total": sum(row.get("usage", {}).get("trace_events", 0) or 0 for row in results),
+        "index_costs": _index_costs(),
+        "citation_span_valid": errors == [],
+        "notes": ["Hit@k uses document IDs from ir2026.evaluate.",
+                  "Latency includes the course runner's per-question corpus initialisation."],
+    }
+    labels_path = ROOT / "datas" / f"{split}_labels.jsonl"
+    if with_labels and labels_path.is_file():
+        metrics, _ = evaluate(questions, results, read_jsonl(labels_path))
+        summary["metrics"] = {key: metrics[key] for key in
+                              ("queries", "gold_hit_at_1", "gold_hit_at_5", "gold_hit_at_10",
+                               "evidence_recall_at_10", "answer_em", "completion_rate",
+                               "mean_elapsed_seconds")}
+    else:
+        summary["metrics"] = None
+        summary["metrics_note"] = ("No labels are available for this split; Hit@k and AnswerEM are "
+                                   "not computed locally. Report status/latency only.")
+    return summary
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--run-dir", type=Path, required=True)
-    p.add_argument("--output", type=Path, required=True)
-    args = p.parse_args()
-    result = summarize(args.run_dir)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("x", encoding="utf-8") as stream:
-        json.dump(result, stream, indent=2, ensure_ascii=False, allow_nan=False)
-        stream.write("\n")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run-dir", type=Path, action="append", required=True)
+    parser.add_argument("--split", choices=["train", "dev", "test"], default="dev")
+    parser.add_argument("--out", type=Path, help="aggregate JSON path")
+    parser.add_argument("--no-labels", action="store_true",
+                        help="skip label-based metrics even when labels exist")
+    args = parser.parse_args()
+    summaries = [summarize(Path(run_dir), args.split, not args.no_labels) for run_dir in args.run_dir]
+    payload = summaries[0] if len(summaries) == 1 else {"runs": summaries}
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

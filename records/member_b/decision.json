@@ -1,0 +1,57 @@
+{
+  "frozen_method": "bm25-v1",
+  "frozen_entry": "agent.solution -> agent.bm25_solution",
+  "frozen_config": "configs/bm25.json",
+  "scope": "basic task only (BM25 baseline)",
+  "reserved_interface": {
+    "module": "retrieval/interfaces.py",
+    "stage": "pipeline/vector_stage.py",
+    "config": "configs/vector.example.json",
+    "guide": "VECTOR_PLUGIN_GUIDE.md",
+    "interface_version": "vector-interface.v1",
+    "default_enabled": false,
+    "input": "query: str, top_k: int",
+    "output": "list[{'doc_id': str, 'rank': int, 'score': float}]",
+    "fusion_output": "list[RankedDoc] with at most top_k unique doc_id",
+    "contract_checks": "rank continuous from 1, unique doc_id, finite score, len <= top_k",
+    "degradation": "invalid or failing backend is logged in the vector_search event and the run falls back to the BM25 ranking"
+  },
+  "dev_metrics": {
+    "run": "output/member_b/dev_bm25_locked",
+    "gold_hit_at_1": 0.2,
+    "gold_hit_at_5": 0.3,
+    "gold_hit_at_10": 0.4,
+    "evidence_recall_at_10": 0.1999,
+    "answer_em": 0.0,
+    "completion_rate": 1.0,
+    "mean_elapsed_seconds": 5.9837
+  },
+  "test_metrics": {
+    "run": "output/member_b/test_base_final_locked",
+    "submission_check": "valid: true, errors: []",
+    "status_counts": {"ok": 50},
+    "completion_rate": 1.0,
+    "note": "test split has no local labels; Hit@k is not computed locally"
+  },
+  "answer_experiment": {
+    "goal": "raise AnswerEM on dev 50",
+    "variants": [
+      {"config": "configs/bm25.json", "policy": "sentence-level extractive (default)",
+       "answer_em": 0.0, "median_answer_chars": 150, "run": "output/member_b/dev_bm25_locked"},
+      {"config": "configs/bm25.span.json", "policy": "typed short span + answer-anchored quote",
+       "answer_em": 0.0, "median_answer_chars": 12.5, "run": "output/member_b/dev_bm25_span",
+       "answer_inside_own_quote": "50/50", "doc_ids_identical_to_baseline": "50/50"}
+    ],
+    "diagnosis": {
+      "gold_in_existing_quotes": "8/50",
+      "gold_in_top10_document_text": "20/50",
+      "gold_regenerated_as_candidate": "13/20",
+      "lexical_cues_next_to_gold": "0/20",
+      "conclusion": "deterministic span extraction cannot pick the exact gold string; AnswerEM needs a semantic answer model"
+    },
+    "unchanged_metrics": {"gold_hit_at_10": 0.4, "evidence_recall_at_10": 0.1999,
+                          "completion_rate": 1.0, "doc_ids_identical_to_baseline": "50/50"},
+    "blocked_by": "no IR2026_MODEL_API_KEY and no local weights, so answer.mode=model could not be run"
+  },
+  "selection_data": "dev split only; the test split is run once after freezing"
+}

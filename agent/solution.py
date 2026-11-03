@@ -1,12 +1,25 @@
-"""Implement any retrieval method here, or export the same format independently.
+"""Default course entry point: BM25 baseline, with a reserved vector seam.
 
-solve(question, tools, config) receives no answer labels. The tools object exposes
-search(terms, match_all=False, limit=10) and read(doc_id, start=0, max_chars=2000).
-Return answer, ordered doc_ids, evidence, status and available model token usage.
-For an external index, use tools.record_retrieval() to record actual stages.
-The runner passes method_type and model in config. Models and harnesses are optional.
-This student entry intentionally has no completed assignment implementation.
+``solve(question, tools, config)`` executes the frozen BM25 baseline. The only
+extension point is ``pipeline.vector_stage``, which runs when the active method
+config sets ``vector.enabled: true``; ``configs/bm25.json`` ships it as ``false``,
+so the executed code path, trace stages and metrics are identical to
+``agent.bm25_solution``.
+
+Interface contract for the vector-space extension is documented in
+``retrieval/interfaces.py`` and ``configs/vector.example.json``.
 """
+from __future__ import annotations
 
-def solve(question,tools,config):
-    raise NotImplementedError('Implement your retrieval method, or export results according to SPEC.md.')
+from agent import bm25_solution
+from pipeline.settings import load_settings
+from retrieval import interfaces
+
+
+def solve(question, tools, config):
+    settings = load_settings()
+    if interfaces.vector_settings(settings)["enabled"]:
+        # Imported lazily so the baseline path never loads optional backends.
+        from pipeline import vector_stage
+        return vector_stage.solve(question, tools, config, settings)
+    return bm25_solution.solve(question, tools, config)

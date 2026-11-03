@@ -1,0 +1,30 @@
+{
+  "method": "bm25-modelqa-example",
+  "chunks_dir": "artifacts/member_a/chunks",
+  "bm25_index_dir": "artifacts/member_a/bm25",
+  "candidate_k": 200,
+  "chunking": {
+    "size": 1200,
+    "overlap": 200,
+    "min_chars": 120
+  },
+  "bm25": {
+    "k1": 0.9,
+    "b": 0.4,
+    "use_stopwords": true,
+    "capitalized_boost": 1.25
+  },
+  "retrieval": {
+    "final_docs": 10,
+    "evidence_docs": 5
+  },
+  "answer": {
+    "mode": "model",
+    "max_answer_chars": 200,
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "IR2026_MODEL_API_KEY",
+    "model": "REPLACE-WITH-ACTUAL-MODEL-ID",
+    "timeout_seconds": 30,
+    "max_output_tokens": 200
+  }
+}
