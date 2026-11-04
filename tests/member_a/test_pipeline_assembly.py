@@ -71,6 +71,26 @@ class AssemblyTests(unittest.TestCase):
     TEXT = ("The Zarnia Observatory was founded in 1907 by Ilse Marrow near the town of Belport. "
             "Its first director catalogued the Pelican Nebula using a brass refractor. " * 4)
 
+    def test_recorder_failure_propagates(self):
+        from unittest.mock import patch
+        tools = tools_for({"ZA-1": self.TEXT})
+        with patch.object(tools, "record_retrieval", side_effect=OSError("disk full")):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                assemble_result({"id":"q1", "question":"observatory"}, ranked([("ZA-1",0,100)]), tools, SETTINGS)
+
+    def test_answer_elapsed_includes_call(self):
+        from unittest.mock import patch
+        from pipeline import result_builder
+        tools = tools_for({"ZA-1": self.TEXT})
+        ticks = [0.0]
+        def answer(*args, **kwargs):
+            ticks[0] += 2.0
+            return {"answer":"1907", "usage":{}}
+        with patch.object(result_builder.time, "monotonic", side_effect=lambda: ticks[0]), patch.object(result_builder.answer_mod, "make_answer", side_effect=answer):
+            assemble_result({"id":"q1", "question":"observatory"}, ranked([("ZA-1",0,100)]), tools, SETTINGS)
+        event = next(e for e in tools.trace if e["tool"] == "answer")
+        self.assertEqual(event["elapsed_ms"], 2000.0)
+
     def test_ok_result_has_short_answer_and_valid_quotes(self):
         tools = tools_for({"ZA-1": self.TEXT})
         docs = ranked([("ZA-1", 0, 120)])

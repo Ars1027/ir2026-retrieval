@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-04",
+  "status": "complete",
+  "method": "bm25-bge-m3-rrf-v1",
+  "model": "baai/bge-m3",
+  "frozen_config_sha256": "74a0c46d0fbb23fee6c5738fd1889ec3b0cc4bc8b77f5d1d34e3985adf2ef850",
+  "base_commit": "f930b586d395d829c9eb5eae0fa04a00b8af355a",
+  "python": "3.13.12",
+  "tests": {
+    "course": 33,
+    "member_a": 49,
+    "member_b": 14,
+    "vector": 12
+  },
+  "full_chunks": 321659,
+  "dev_queries": 50,
+  "dev_hit_at_1": 0.16,
+  "dev_hit_at_5": 0.34,
+  "dev_hit_at_10": 0.44,
+  "dev_evidence_recall_at_10": 0.20085714285714285,
+  "dev_answer_em": 0,
+  "cross_review": "Both directions completed. Hybrid aggregate metrics identical; 49/50 exact results, one ordering/evidence difference with identical document set/answer/status.",
+  "test_queries": 50,
+  "test_validation_errors": 0,
+  "test_status_counts": {
+    "ok": 50
+  },
+  "test_metrics": null,
+  "test_metrics_note": "No test labels; no test tuning or Hit calculation.",
+  "build_wall_seconds_note": "Last successful resume invocation only; full historical wall-clock duration unknown. encoding_seconds is summed request duration, not elapsed time.",
+  "cost": null,
+  "cost_note": "Token totals cover cached successful API responses; failed requests, probes and retries may incur other charges. No full invoice reconciliation.",
+  "answer_note": "Extractive strategy; format validation and ok status do not establish answer correctness. AnswerEM remains zero.",
+  "routing_note": "OpenRouter BGE same model alias; early default routing, later DeepInfra priority with Parasail fallback. Immutable revision unavailable.",
+  "artifacts": "Local output/member_b/test_base_final; corpus/indexes/results/secrets excluded from Git."
+}

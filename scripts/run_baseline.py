@@ -32,7 +32,7 @@ METHODS = {
     "bm25": {"config": "configs/bm25.json", "agent": "agent.bm25_solution",
              "label": "bm25-v1", "model": None},
     # Frozen default entry: what the basic deliverable runs.
-    "final": {"config": "configs/bm25.json", "agent": "agent.solution",
+    "final": {"config": "configs/final.json", "agent": "agent.solution",
               "label": "bm25-v1", "model": None},
 }
 
@@ -57,18 +57,23 @@ def main():
 
     method = METHODS[args.method]
     config = Path(args.config or (ROOT / method["config"])).resolve()
-    output = Path(args.output)
+    settings = json.loads(config.read_text(encoding="utf-8"))
+    if args.split == "test" and (not settings.get("frozen") or args.limit is not None):
+        parser.error("test requires a frozen configuration and the complete split")
+    output = Path(args.output).resolve()
     if output.exists() and any(output.iterdir()):
         parser.error(f"output directory is not empty: {output}")
     env = os.environ.copy()
     env["IR2026_METHOD_CONFIG"] = str(config)
-    label = args.method_label or method["label"]
+    label = args.method_label or settings.get("method", method["label"])
     cmd = [sys.executable, str(ROOT / "run.py"), "--split", args.split,
            "--agent", method["agent"], "--method-label", label,
            "--method-type", "retrieval", "--output", str(output)]
     if args.limit:
         cmd += ["--limit", str(args.limit)]
     model = args.model_label if args.model_label is not None else method["model"]
+    if not model and settings.get("vector", {}).get("enabled"):
+        model = settings.get("embedding", {}).get("model", "text-embedding-ada-002")
     if model:
         cmd += ["--model-label", model]
 
@@ -85,7 +90,8 @@ def main():
     if code == 0 and args.check:
         submission = ["--submission"] if args.split in ("dev", "test") and not args.limit else []
         summary["check_exit"] = run([sys.executable, str(ROOT / "check_results.py"),
-                                     "--split", args.split, "--run-dir", str(output)] + submission, env)
+                                     "--split", args.split, "--run-dir", str(output)] + submission +
+                                    (["--questions", str(output / "questions.jsonl")] if args.limit else []), env)
     if code == 0 and args.evaluate:
         evaluate_cmd = [sys.executable, str(ROOT / "evaluate.py"), "--split", args.split,
                         "--run-dir", str(output)]
@@ -93,7 +99,7 @@ def main():
             evaluate_cmd.append("--allow-subset")
         summary["evaluate_exit"] = run(evaluate_cmd, env)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return code
+    return code or summary.get("check_exit", 0) or summary.get("evaluate_exit", 0)
 
 
 if __name__ == "__main__":

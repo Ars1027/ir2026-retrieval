@@ -1,0 +1,66 @@
+{
+  "split": "dev",
+  "method": "bm25-bge-m3-rrf-v1",
+  "method_type": "retrieval",
+  "model": "baai/bge-m3",
+  "protocol_version": "ir2026.retrieval.v2",
+  "queries": 50,
+  "expected_queries": 50,
+  "validation_errors": 0,
+  "validation_error_sample": null,
+  "status_counts": {
+    "ok": 50
+  },
+  "completion_rate": 1.0,
+  "latency_seconds": {
+    "mean": 5.9743,
+    "p50": 5.9071,
+    "p95": 6.518,
+    "max": 7.9905
+  },
+  "tokens": {
+    "input": 6252,
+    "output": 0,
+    "queries_with_unknown_tokens": 0
+  },
+  "cost": null,
+  "cost_note": "Provider billing unavailable. Tokens count successful responses only; failed/retried request billing is unknown.",
+  "trace_events_total": 350,
+  "index_costs": {
+    "bm25": {
+      "build_seconds": 74.039,
+      "chunks": 321659,
+      "terms": 842329,
+      "params": {
+        "k1": 0.9,
+        "b": 0.4,
+        "use_stopwords": true,
+        "capitalized_boost": 1.25
+      },
+      "index_bytes": 207921947
+    },
+    "vector": {
+      "count": 321659,
+      "input_tokens": 97147705,
+      "encoding_seconds": 40646.18249089995,
+      "build_wall_seconds": 4446.9357942999995,
+      "index_bytes": 1317515309,
+      "model_revision_note": "Provider model alias; immutable revision unavailable"
+    }
+  },
+  "citation_span_valid": true,
+  "notes": [
+    "Hit@k uses document IDs from ir2026.evaluate.",
+    "Latency includes the course runner's per-question corpus initialisation."
+  ],
+  "metrics": {
+    "queries": 50,
+    "gold_hit_at_1": 0.16,
+    "gold_hit_at_5": 0.34,
+    "gold_hit_at_10": 0.44,
+    "evidence_recall_at_10": 0.20085714285714285,
+    "answer_em": 0.0,
+    "completion_rate": 1.0,
+    "mean_elapsed_seconds": 5.974253999999999
+  }
+}

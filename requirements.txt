@@ -3,3 +3,4 @@
 -r requirements/member_a.txt
 # Member B: run integration, aggregation, reserved vector interface (numpy only).
 -r requirements/member_b.txt
+-r requirements/vector.txt

@@ -1,5 +1,12 @@
 # IR 2026 检索大作业
 
+当前冻结入口为 `configs/final.json`（BM25 + OpenRouter `baai/bge-m3` + 文档级 RRF）。全量 321,659 个片段已编码；dev50 官方检查通过，Hit@1/5/10 = 0.16/0.34/0.44，EvidenceRecall@10 = 0.200857，AnswerEM = 0。独立复跑效果指标一致，49/50 题结果逐字段一致；1题文档顺序/引用不同，但文档集合、答案和状态一致。
+
+设置 `OPENROUTER_API_KEY` 后运行 `python scripts/run_baseline.py --method final --split test --output output/new_test_run --check`；已有最终产物在 `output/member_b/test_base_final/`，请勿覆盖。BM25 对照仍通过 `--method bm25` 运行。
+
+索引成功响应累计输入 97,147,705 tokens，FAISS 文件 1,317,515,309 bytes。`build_wall_seconds` 仅表示最后一次续建调用耗时，不含之前尝试；累计历史墙钟时间和实际账单费用未知。`encoding_seconds` 是缓存批次请求耗时之和，不能当作并发墙钟时间。以下 PR #1 的历史 BM25 记录保留作对照，不代表当前混合方案。
+
+
 本项目提供固定课程数据、语料访问工具、批量运行入口、结果检查和评测程序。给定自然语言问题 Q 与本地语料 D，设计并实现检索方法，返回能够支持回答 Q 的相关文档、简短答案和原文引用，在统一数据划分与评测规范下比较效果、成本和失败原因。
 
 **方法与框架不限，不要求使用 harness 或大模型，基础任务不要求训练模型。** 关键词、BM25、向量检索、混合检索、重排序和 Agent 检索均可。DCI 只是可参考的研究路线，不是指定实现方式。
@@ -161,13 +168,13 @@ retrieval/corpus_adapter.py      只读语料访问
 retrieval/chunking.py            保真切块（原文[start:end]）与稳定 chunk_id
 retrieval/bm25.py                倒排索引、BM25Retriever
 retrieval/document_rank.py       片段到文档的稳定聚合
-retrieval/interfaces.py          【预留】向量空间模型接口与配置解析
+retrieval/interfaces.py          向量检索与融合接口及配置解析
 pipeline/settings.py             IR2026_METHOD_CONFIG 配置读取
 pipeline/evidence.py             逐字原文引用
 pipeline/answer.py               extractive / model 两种答案策略
 pipeline/model_client.py         OpenAI 兼容客户端（密钥读环境变量）
 pipeline/result_builder.py       共用 assemble_result
-pipeline/vector_stage.py         【预留】向量分支与融合的执行位置（默认不启用）
+pipeline/vector_stage.py         可配置的向量分支、融合与真实用量合并
 agent/bm25_solution.py           BM25 课程适配器
 agent/solution.py                默认入口：BM25；仅当配置启用向量分支时走 vector_stage
 ```
@@ -198,43 +205,28 @@ python -m unittest discover -s tests/member_b -v   # 成员B模块测试（含�
 
 接口约定：`start/end` 为 `Corpus.text(doc_id)` 的 Python 字符位置，`doc_id` 保持课程原始字符串，`rank` 从 1 开始，`score` 仅在同一召回器内可比。
 
-### 预留接口：向量空间模型（附加题 1 接入点）
+### API 向量检索与混合流水线
 
-接口定义在 `retrieval/interfaces.py`，示例配置见 `configs/vector.example.json`。默认配置 `configs/bm25.json` 中 `vector.enabled = false`，因此基础任务只会执行 BM25 代码路径。
+现在提供 `vector_backend/ada.py`：通过 `https://openrouter.ai/api/v1` 调用 `baai/bge-m3`，归一化 1024 维向量，使用 FAISS 精确内积检索，再按文档排名进行 RRF。配置为 `configs/vector.bge.json`；BM25 基线仍可独立运行。
 
-外部协作成员的完整操作手册（接口规范、接入步骤、评测协议、验收标准、推荐方法）：**`VECTOR_PLUGIN_GUIDE.md`**。
-
-```python
-# 1) 文档级向量检索器（必须继承 retrieval.interfaces.VectorRetriever）
-class MyVector(interfaces.VectorRetriever):
-    name = "my-vector"
-    def search(self, query: str, top_k: int) -> list[dict]:
-        # 返回 [{"doc_id": str, "rank": int, "score": float}, ...]
-        ...
-    def describe(self) -> dict:          # 写进 trace/记录的非敏感元数据
-        return {"name": self.name, "model": "...", "revision": "..."}
-
-def create_retriever(settings: dict) -> MyVector:   # 工厂函数名可自定义
-    return MyVector()
-
-# 2) 文档级融合（可选，必须继承 retrieval.interfaces.DocumentFusion）
-class MyFusion(interfaces.DocumentFusion):
-    def fuse(self, bm25_docs, vector_docs, top_k) -> list:   # list[RankedDoc]
-        ...
-```
-
-输出约束（`retrieval.interfaces.validate_vector_hits` 会校验）：`len(hits) <= top_k`；`rank` 从 1 连续编号；`doc_id` 为课程原始字符串且不重复；`score` 为有限浮点数，越大越相关。接入方式：在方法配置里写 `"vector": {"enabled": true, "retriever": "包名.模块:create_retriever", "fusion": "包名.模块:create_fusion", "top_k": 100}`，然后用默认入口运行：
+密钥从环境变量 `OPENROUTER_API_KEY` 读取，不写入配置或日志。先在当前终端设置该变量，然后执行：
 
 ```bash
-python scripts/run_baseline.py --method final --config my_vector_config.json \
-    --method-label bm25-v1+vector --split dev --output output/member_b/dev_vector --check --evaluate
+python -m pip install -r requirements.txt -r requirements/vector.txt
+python scripts/build_chunks.py
+python scripts/build_bm25.py
+python scripts/build_vector.py --config configs/vector.bge.json --workers 16
+python scripts/run_baseline.py --method final --config configs/vector.bge.json --method-label bm25-bge-m3-rrf-v1 --split train --limit 3 --output output/member_b/bge_train --check --evaluate
+python scripts/run_baseline.py --method final --config configs/vector.bge.json --method-label bm25-bge-m3-rrf-v1 --split dev --output output/member_b/bge_dev --check --evaluate
 ```
 
-外部实现返回非法结构或抛错时，`pipeline/vector_stage.py` 会记录 `vector_search` 事件中的 `errors`，并降级回纯 BM25 排名，不会中断整轮运行；BM25 适配器、证据/答案组装和课程运行器都不需要改动。
+向量构建按 64 片段缓存一批，默认最多 8 个并发请求，重启同一命令会复用成功批次。索引未完整构建时不能查询；模型或切块配置改变需要新的索引目录。API 错误或非法向量结果会保留失败状态，不降级成成功的 BM25 混合结果。API 输入 token 按实际 `usage` 记录，缺失时为 `null`，不估算供应商费用。
 
-## 运行结果（BM25 基线，本机实测）
+先完成 train 冒烟、完整 dev50 官方检查/评测与交叉复核，再冻结方法配置（`frozen: true`），最后运行 test50。当前新 hybrid 的完成状态以新增实验记录为准，不能引用下方历史 BM25 成绩作为其结果。详细步骤见 [向量接入指南](VECTOR_PLUGIN_GUIDE.md)。
 
-原始产物全部在 `output/` 下，因含题目原文与语料引用（见 `DATA_USE.md`）不进入公开仓库；仓库内只保留聚合数字 `records/member_b/*.json`，下表即这些聚合值。
+## 历史运行结果（成员 A PR #1 的 BM25 基线）
+
+以下数字来自成员 A 的 PR #1 所附 BM25 基线记录，不是 BGE-M3 hybrid 的新结果。原始产物保存在当时运行机器的 `output/` 中，不随 Git 合并传输；仓库只包含聚合记录。
 
 ### dev 50（有标签，`evaluate.py`）
 
@@ -298,3 +290,5 @@ python scripts/run_baseline.py --method final --config my_vector_config.json \
 | 每题结果与日志（含原文引用，仅本地） | `output/member_b/*/results.jsonl`、`output/member_b/*/traces/` |
 | 配置快照 | `output/member_b/*/method_config.json` |
 | 可提交的聚合记录 | `records/member_b/dev_bm25_metrics.json`、`records/member_b/test_base_final_summary.json`、`records/member_b/decision.json` |
+
+旧 `configs/vector.ada.json` 和 `artifacts/member_b/ada/` 为先前 ada-002 运行保留；BGE-M3 使用独立的 `artifacts/member_b/bge_m3/`。两者的模型、维度与 API 不同，缓存和索引不能混用。模块名 `vector_backend/ada.py` 为沿用的文件名，实际模型由配置决定。

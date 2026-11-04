@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 ENV_VAR = "IR2026_METHOD_CONFIG"
-DEFAULT_CONFIG = "configs/bm25.json"
+DEFAULT_CONFIG = "configs/final.json"
 
 # Documented defaults; every key can be overridden in the JSON file.
 DEFAULTS = {

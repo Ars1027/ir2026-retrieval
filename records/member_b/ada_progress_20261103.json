@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-03",
+  "status": "blocked_provider_quota",
+  "model": "text-embedding-ada-002",
+  "dimensions": 1536,
+  "total_chunks": 321659,
+  "cached_chunks": 26304,
+  "cached_batches": 411,
+  "successful_response_input_tokens": 7309808,
+  "summed_request_seconds": 2451.2076443000624,
+  "billing_cost": null,
+  "billing_note": "Successful response usage only; failed/retried requests may also be billed. Provider currency/unit not verified.",
+  "provider_error_code": "insufficient_user_quota",
+  "provider_remaining": 0.006296,
+  "provider_required_for_failed_batch": 0.012242,
+  "tests": {
+    "course": 33,
+    "member_a": 49,
+    "member_b": 13,
+    "vector": 8
+  },
+  "hybrid_dev_metrics": null,
+  "frozen": false,
+  "test_run": false,
+  "python": "3.13.12",
+  "resume_command": "python scripts/build_vector.py --config configs/vector.ada.json --workers 16",
+  "remaining": [
+    "complete full vector index after quota restored",
+    "dense train diagnostic and hybrid train smoke",
+    "hybrid full dev50 with official validation/evaluation",
+    "hybrid cross-review",
+    "freeze final config then test50 and validation"
+  ]
+}

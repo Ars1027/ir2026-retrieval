@@ -30,7 +30,7 @@ def _percentile(values, fraction):
     return ordered[index]
 
 
-def _index_costs() -> dict:
+def _index_costs(run_dir) -> dict:
     """Build/load costs recorded in local index metadata (read-only)."""
     costs = {}
     bm25_meta = ROOT / "artifacts/member_a/bm25/meta.json"
@@ -41,14 +41,16 @@ def _index_costs() -> dict:
                          "params": meta.get("params"),
                          "index_bytes": sum(p.stat().st_size
                                             for p in bm25_meta.parent.glob("*") if p.is_file())}
-    # Reserved slot: an external vector backend may write its own meta.json here.
-    vector_meta = ROOT / "artifacts/member_b/vector/meta.json"
-    if vector_meta.is_file():
-        meta = json.loads(vector_meta.read_text(encoding="utf-8"))
-        costs["vector"] = {"build_seconds": (meta.get("build_stats") or {}).get("elapsed_seconds"),
-                           "backend": (meta.get("encoder") or {}).get("backend"),
-                           "index_bytes": sum(p.stat().st_size
-                                              for p in vector_meta.parent.glob("*") if p.is_file())}
+    snapshot = run_dir / "method_config.json"
+    if snapshot.is_file():
+        settings = json.loads(snapshot.read_text(encoding="utf-8"))
+        if settings.get("vector", {}).get("enabled"):
+            vector_dir = ROOT / settings["vector"]["index_dir"]
+            metadata = vector_dir / "metadata.json"
+            if metadata.is_file():
+                meta = json.loads(metadata.read_text(encoding="utf-8"))
+                costs["vector"] = {key: meta.get(key) for key in
+                    ("count", "input_tokens", "encoding_seconds", "build_wall_seconds", "index_bytes", "model_revision_note")}
     return costs
 
 
@@ -78,7 +80,7 @@ def summarize(run_dir: Path, split: str, with_labels: bool) -> dict:
         "queries": len(results),
         "expected_queries": len(questions),
         "validation_errors": len(errors),
-        "validation_error_sample": errors[:5],
+        "validation_error_sample": None,  # Raw errors may contain private question IDs.
         "status_counts": statuses,
         "completion_rate": statuses.get("ok", 0) / max(len(results), 1),
         "latency_seconds": {
@@ -87,10 +89,13 @@ def summarize(run_dir: Path, split: str, with_labels: bool) -> dict:
             "p95": _percentile(latencies, 0.95),
             "max": max(latencies) if latencies else None,
         },
-        "tokens": {"input": tokens_in, "output": tokens_out,
+        "tokens": {"input": None if unknown_tokens else tokens_in,
+                   "output": None if any(r.get("usage", {}).get("model_output_tokens") is None for r in results) else tokens_out,
                    "queries_with_unknown_tokens": unknown_tokens},
+        "cost": None,
+        "cost_note": "Provider billing unavailable. Tokens count successful responses only; failed/retried request billing is unknown.",
         "trace_events_total": sum(row.get("usage", {}).get("trace_events", 0) or 0 for row in results),
-        "index_costs": _index_costs(),
+        "index_costs": _index_costs(run_dir),
         "citation_span_valid": errors == [],
         "notes": ["Hit@k uses document IDs from ir2026.evaluate.",
                   "Latency includes the course runner's per-question corpus initialisation."],

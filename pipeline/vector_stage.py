@@ -36,7 +36,7 @@ def _bm25(settings):
 
 def _brief_vector_hits(hits):
     keys = ("doc_id", "rank", "score")
-    return [{k: hit[k] for k in keys} for hit in hits]
+    return [dict({k: hit[k] for k in keys}, hits=hit.get("hits", [])) for hit in hits]
 
 
 def solve(question, tools, config, settings):
@@ -46,7 +46,8 @@ def solve(question, tools, config, settings):
     final_docs = int((settings.get("retrieval") or {}).get("final_docs") or 10)
 
     started = time.monotonic()
-    bm25 = _bm25(settings)
+    dense_only = settings.get("vector", {}).get("dense_only", False)
+    bm25 = None if dense_only else _bm25(settings)
     vector = interfaces.build_vector_retriever(settings)
     fusion = interfaces.build_fusion(settings)
     tools.record_retrieval(
@@ -54,34 +55,36 @@ def solve(question, tools, config, settings):
         arguments={"bm25_index_dir": settings["bm25_index_dir"],
                    "vector_index_dir": vector_config["index_dir"],
                    "vector_backend": vector_config["retriever"]},
-        output={"bm25_chunks": bm25.index.n_chunks, "bm25_terms": len(bm25.index.vocab),
+        output={"bm25_chunks": bm25.index.n_chunks if bm25 else 0, "bm25_terms": len(bm25.index.vocab) if bm25 else 0,
                 "vector": vector.describe(), "fusion": fusion.describe()},
         doc_ids=[],
         elapsed_ms=(time.monotonic() - started) * 1000,
     )
 
-    started = time.monotonic()
-    hits = bm25.search(query, candidate_k)
-    tools.record_retrieval(
-        stage="bm25_search",
-        arguments={"query": query, "top_k": candidate_k},
-        output={"hits": [{k: hit[k] for k in ("chunk_id", "doc_id", "start", "end",
-                                             "score", "rank")} for hit in hits],
-                "returned": len(hits)},
-        doc_ids=list(dict.fromkeys(hit["doc_id"] for hit in hits)),
-        elapsed_ms=(time.monotonic() - started) * 1000,
-    )
+    bm25_docs = []
+    if not dense_only:
+        started = time.monotonic()
+        hits = bm25.search(query, candidate_k)
+        tools.record_retrieval(
+            stage="bm25_search",
+            arguments={"query": query, "top_k": candidate_k},
+            output={"hits": [{k: hit[k] for k in ("chunk_id", "doc_id", "start", "end",
+                                                 "score", "rank")} for hit in hits],
+                    "returned": len(hits)},
+            doc_ids=list(dict.fromkeys(hit["doc_id"] for hit in hits)),
+            elapsed_ms=(time.monotonic() - started) * 1000,
+        )
 
-    started = time.monotonic()
-    bm25_docs = aggregate_documents(hits, top_k=final_docs * 10)
-    tools.record_retrieval(
-        stage="document_aggregate",
-        arguments={"chunks": len(hits), "top_k": final_docs * 10},
-        output={"documents": [{"doc_id": doc["doc_id"], "rank": doc["rank"],
-                               "score": doc["score"]} for doc in bm25_docs]},
-        doc_ids=[doc["doc_id"] for doc in bm25_docs],
-        elapsed_ms=(time.monotonic() - started) * 1000,
-    )
+        started = time.monotonic()
+        bm25_docs = aggregate_documents(hits, top_k=final_docs * 10)
+        tools.record_retrieval(
+            stage="document_aggregate",
+            arguments={"chunks": len(hits), "top_k": final_docs * 10},
+            output={"documents": [{"doc_id": doc["doc_id"], "rank": doc["rank"],
+                                   "score": doc["score"]} for doc in bm25_docs]},
+            doc_ids=[doc["doc_id"] for doc in bm25_docs],
+            elapsed_ms=(time.monotonic() - started) * 1000,
+        )
 
     started = time.monotonic()
     vector_docs = vector.search(query, vector_config["top_k"])
@@ -97,8 +100,7 @@ def solve(question, tools, config, settings):
         elapsed_ms=(time.monotonic() - started) * 1000,
     )
     if problems:
-        # A broken plug-in must degrade to the baseline, never crash the run.
-        vector_docs = []
+        raise interfaces.RetrievalBackendError(f"invalid vector output: {problems[:3]}")
 
     started = time.monotonic()
     if vector_docs:
@@ -114,9 +116,17 @@ def solve(question, tools, config, settings):
         arguments={"fusion": (vector_config["fusion"] or "null-fusion"),
                    "top_k": final_docs},
         output={"documents": [{"doc_id": doc["doc_id"], "rank": doc["rank"],
-                               "score": doc["score"]} for doc in fused],
+                               "score": doc["score"], "source_ranks": doc.get("source_ranks", {})} for doc in fused],
                 "used_vector_branch": bool(vector_docs)},
         doc_ids=[doc["doc_id"] for doc in fused],
         elapsed_ms=(time.monotonic() - started) * 1000,
     )
-    return assemble_result(question, fused, tools, settings, source="bm25+vector")
+    result = assemble_result(question, fused, tools, settings, source="dense" if dense_only else "bm25+vector")
+    usage = result["usage"]
+    query_tokens = getattr(vector, "last_query_tokens", None)
+    answer_tokens = usage.get("model_input_tokens")
+    usage["model_input_tokens"] = (query_tokens + answer_tokens
+                                   if query_tokens is not None and answer_tokens is not None else None)
+    usage["token_notes"] += " Embedding input tokens use API usage; missing usage remains null."
+    vector.close()
+    return result

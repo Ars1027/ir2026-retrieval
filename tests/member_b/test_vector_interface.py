@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -250,17 +251,48 @@ class PluginIntegrationTests(unittest.TestCase):
             [dict(doc_id=doc_id, rank=rank, score=1.0, hits=[{}])
              for rank, doc_id in enumerate(result["doc_ids"], 1)]), [])
 
-    def test_broken_plugin_degrades_to_baseline(self):
+    def test_dense_only_skips_bm25_and_preserves_vector_evidence(self):
+        settings = self._settings("stub_vector_plugin:create_retriever",
+                                  "stub_vector_plugin:create_fusion")
+        settings["vector"]["dense_only"] = True
+        text = TEXTS["VB-2"]
+        chunk = contracts.make_chunk("VB-2", 0, 0, len(text), text)
+        hit = contracts.make_hit(chunk, 0.9, 1, "dense")
+        document = contracts.make_ranked_doc("VB-2", 1, 0.9, [hit])
+
+        class DenseFixture(interfaces.VectorRetriever):
+            last_query_tokens = 7
+            def search(self, query, top_k):
+                return [document]
+
+        class DenseFusion(interfaces.DocumentFusion):
+            def fuse(inner_self, bm25_docs, vector_docs, top_k):
+                self.assertEqual(bm25_docs, [])
+                return vector_docs[:top_k]
+
+        tools = make_tools(None)
+        with patch.object(vector_stage, "_bm25", side_effect=AssertionError("BM25 must not load")) as bm25, \
+             patch.object(interfaces, "build_vector_retriever", return_value=DenseFixture()), \
+             patch.object(interfaces, "build_fusion", return_value=DenseFusion()):
+            result = vector_stage.solve({"id": "q1", "question": "When did Ostra museum open?"},
+                                        tools, {"method_type": "retrieval"}, settings)
+        bm25.assert_not_called()
+        stages = [event["tool"] for event in tools.trace]
+        self.assertEqual(stages, ["load_indexes", "vector_search", "fuse", "read_evidence", "answer"])
+        self.assertEqual(result["doc_ids"], ["VB-2"])
+        self.assertTrue(result["evidence"])
+        self.assertTrue(all(quote["text"] in text for quote in result["evidence"]))
+        self.assertEqual(result["usage"]["model_input_tokens"], 7)
+
+    def test_broken_plugin_is_explicit_failure(self):
         settings = self._settings("stub_vector_plugin:create_broken",
                                   "stub_vector_plugin:create_fusion")
         tools = make_tools(None)
-        result = vector_stage.solve({"id": "q1", "question": "Halden mill wheel Ostra"},
-                                    tools, {"method_type": "retrieval"}, settings)
+        with self.assertRaises(interfaces.RetrievalBackendError):
+            vector_stage.solve({"id": "q1", "question": "Halden mill wheel Ostra"},
+                               tools, {"method_type": "retrieval"}, settings)
         vector_event = [event for event in tools.trace if event["tool"] == "vector_search"][0]
         self.assertTrue(vector_event["output"]["errors"])
-        fuse_event = [event for event in tools.trace if event["tool"] == "fuse"][0]
-        self.assertFalse(fuse_event["output"]["used_vector_branch"])
-        self.assertTrue(result["doc_ids"])
 
     def test_fusion_output_is_validated(self):
         settings = self._settings("stub_vector_plugin:create_retriever", None)

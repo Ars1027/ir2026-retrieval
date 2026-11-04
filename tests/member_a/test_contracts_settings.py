@@ -61,10 +61,12 @@ class SettingsTests(unittest.TestCase):
     def tearDown(self):
         os.environ.pop(settings_mod.ENV_VAR, None)
 
-    def test_default_config_is_bm25(self):
+    def test_default_config_is_frozen_hybrid(self):
         os.environ.pop(settings_mod.ENV_VAR, None)
         loaded = settings_mod.load_settings()
-        self.assertTrue(loaded["config_path"].endswith("bm25.json"))
+        self.assertTrue(loaded["config_path"].endswith("final.json"))
+        self.assertTrue(loaded["frozen"])
+        self.assertTrue(loaded["vector"]["enabled"])
         self.assertTrue(Path(loaded["chunks_dir"]).is_absolute())
 
     def test_env_points_to_config_and_keeps_vector_keys(self):

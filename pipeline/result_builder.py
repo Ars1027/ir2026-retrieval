@@ -19,11 +19,7 @@ def _record(tools, **kwargs) -> None:
     recorder = getattr(tools, "record_retrieval", None)
     if recorder is None:
         return
-    try:
-        recorder(**kwargs)
-    except Exception:
-        # Assembly must not fail because a caller supplied non-course tools.
-        pass
+    recorder(**kwargs)
 
 
 def _limits(tools) -> dict:
@@ -81,6 +77,7 @@ def assemble_result(question, ranked_docs, tools, settings, source=None) -> dict
             doc_ids=doc_ids,
             elapsed_ms=elapsed_ms)
 
+    answer_started = time.monotonic()
     answered = answer_mod.make_answer(question_text, quotes, settings, selection=selection)
     answer = (answered.get("answer") or "").strip()
     usage = dict(answered.get("usage") or {})
@@ -90,7 +87,6 @@ def assemble_result(question, ranked_docs, tools, settings, source=None) -> dict
         usage["token_notes"] = (usage.get("token_notes") or "") + f" Retriever: {source}."
     status = "ok" if answer else "no_answer"
 
-    answer_started = time.monotonic()
     _record(tools,
             stage="answer",
             arguments={"mode": (settings.get("answer") or {}).get("mode", "extractive"),

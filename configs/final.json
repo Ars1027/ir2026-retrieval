@@ -1,0 +1,47 @@
+{
+  "method": "bm25-bge-m3-rrf-v1",
+  "chunks_dir": "artifacts/member_a/chunks",
+  "bm25_index_dir": "artifacts/member_a/bm25",
+  "vector_index_dir": "artifacts/member_b/bge_m3",
+  "candidate_k": 200,
+  "chunking": {
+    "size": 1200,
+    "overlap": 200,
+    "min_chars": 120
+  },
+  "bm25": {
+    "k1": 0.9,
+    "b": 0.4,
+    "use_stopwords": true,
+    "capitalized_boost": 1.25
+  },
+  "vector": {
+    "enabled": true,
+    "retriever": "vector_backend.ada:create_retriever",
+    "fusion": "vector_backend.ada:create_fusion",
+    "top_k": 200,
+    "index_dir": "artifacts/member_b/bge_m3",
+    "rrf_k": 60
+  },
+  "retrieval": {
+    "final_docs": 10,
+    "evidence_docs": 5
+  },
+  "answer": {
+    "mode": "extractive",
+    "max_answer_chars": 200,
+    "model": null,
+    "base_url": null,
+    "timeout_seconds": 30,
+    "max_output_tokens": 200
+  },
+  "frozen": true,
+  "embedding": {
+    "model": "baai/bge-m3",
+    "dimension": 1024,
+    "base_url": "https://openrouter.ai/api/v1",
+    "api_key_env": "OPENROUTER_API_KEY",
+    "timeout_seconds": 120,
+    "batch_size": 64
+  }
+}
