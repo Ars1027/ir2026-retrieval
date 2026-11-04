@@ -2,7 +2,7 @@
 
 The assembler is retriever-agnostic: it receives a document ranking, reads the
 source text through the course corpus, cuts verbatim quotes, asks the configured
-answer strategy and returns the SPEC.md result record. Member B reuses this
+answer strategy and returns the SPEC.md result record. pipeline reuses this
 module instead of copying the logic.
 """
 from __future__ import annotations

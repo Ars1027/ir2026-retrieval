@@ -47,16 +47,16 @@ python scripts/run_baseline.py --method final --split dev --output output/hybrid
 # dense-only 的 train 冒烟
 python scripts/run_baseline.py --method final --config configs/vector.bge.dense.json --split train --limit 3 --output output/dense_train_new --check --evaluate
 # 核对已有最终测试结果
-python check_results.py --split test --run-dir output/member_b/test_base_final --submission
+python check_results.py --split test --run-dir output/hybrid/test_base_final --submission
 ```
 
 Windows 可使用 `./run.ps1`，其他平台可使用 `bash run.sh`，参数与统一入口相同。脚本通过 `IR2026_METHOD_CONFIG` 将配置传给课程运行器。
 
 ```bash
 python -m unittest discover -s tests -v
-python -m unittest discover -s tests/member_a -v
-python -m unittest discover -s tests/member_b -v
+python -m unittest discover -s tests/core -v
+python -m unittest discover -s tests/pipeline -v
 python -m unittest discover -s tests/vector_backend -v
 ```
 
-最近验证共 108 项通过（33 + 49 + 14 + 12）。目录名沿用已有工程路径；交接以模块职责为准。
+最近验证共 108 项通过（33 + 49 + 14 + 12）。目录按检索方法和模块职责组织。

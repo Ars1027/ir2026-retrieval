@@ -1,6 +1,6 @@
-# Total dependency entry point for both members.
-# Member A: BM25, chunking, evidence/answer assembly.
--r requirements/member_a.txt
-# Member B: run integration, aggregation, reserved vector interface (numpy only).
--r requirements/member_b.txt
+# Total dependency entry point for retrieval and pipeline modules.
+# core: BM25, chunking, evidence/answer assembly.
+-r requirements/core.txt
+# pipeline: run integration, aggregation, reserved vector interface (numpy only).
+-r requirements/pipeline.txt
 -r requirements/vector.txt

@@ -1,8 +1,8 @@
 {
   "method": "bm25-v1+span",
-  "chunks_dir": "artifacts/member_a/chunks",
-  "bm25_index_dir": "artifacts/member_a/bm25",
-  "vector_index_dir": "artifacts/member_b/vector",
+  "chunks_dir": "artifacts/chunks",
+  "bm25_index_dir": "artifacts/bm25",
+  "vector_index_dir": "artifacts/vector",
   "candidate_k": 200,
   "chunking": {
     "size": 1200,
@@ -20,7 +20,7 @@
     "retriever": null,
     "fusion": null,
     "top_k": 200,
-    "index_dir": "artifacts/member_b/vector"
+    "index_dir": "artifacts/vector"
   },
   "retrieval": {
     "final_docs": 10,

@@ -3,13 +3,13 @@
   "status": "complete",
   "method": "bm25-bge-m3-rrf-v1",
   "model": "baai/bge-m3",
-  "frozen_config_sha256": "74a0c46d0fbb23fee6c5738fd1889ec3b0cc4bc8b77f5d1d34e3985adf2ef850",
+  "frozen_config_sha256": "85e4362129c97d64c5f31a914b0f41334ca4598e4eeec90df99c9ecd98960e6a",
   "base_commit": "f930b586d395d829c9eb5eae0fa04a00b8af355a",
   "python": "3.13.12",
   "tests": {
     "course": 33,
-    "member_a": 49,
-    "member_b": 14,
+    "core": 49,
+    "pipeline": 14,
     "vector": 12
   },
   "full_chunks": 321659,
@@ -32,5 +32,7 @@
   "cost_note": "Token totals cover cached successful API responses; failed requests, probes and retries may incur other charges. No full invoice reconciliation.",
   "answer_note": "Extractive strategy; format validation and ok status do not establish answer correctness. AnswerEM remains zero.",
   "routing_note": "OpenRouter BGE same model alias; early default routing, later DeepInfra priority with Parasail fallback. Immutable revision unavailable.",
-  "artifacts": "Local output/member_b/test_base_final; corpus/indexes/results/secrets excluded from Git."
+  "artifacts": "Local output/hybrid/test_base_final; corpus/indexes/results/secrets excluded from Git.",
+  "original_frozen_config_sha256": "74a0c46d0fbb23fee6c5738fd1889ec3b0cc4bc8b77f5d1d34e3985adf2ef850",
+  "path_migration_note": "Storage paths renamed by method/task; retrieval parameters and original results unchanged."
 }

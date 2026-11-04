@@ -1,4 +1,4 @@
-"""Faithful chunking tests (member A)."""
+"""Faithful chunking tests (core)."""
 from __future__ import annotations
 
 import sys

@@ -1,4 +1,4 @@
-"""Fictional synthetic fixtures for member A tests.
+"""Fictional synthetic fixtures for core tests.
 
 The content is invented for testing and contains no course data.
 """

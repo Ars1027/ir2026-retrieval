@@ -17,7 +17,7 @@
     "degradation": "invalid or failing backend is logged in the vector_search event and the run falls back to the BM25 ranking"
   },
   "dev_metrics": {
-    "run": "output/member_b/dev_bm25_locked",
+    "run": "output/bm25/dev_bm25_locked",
     "gold_hit_at_1": 0.2,
     "gold_hit_at_5": 0.3,
     "gold_hit_at_10": 0.4,
@@ -27,7 +27,7 @@
     "mean_elapsed_seconds": 5.9837
   },
   "test_metrics": {
-    "run": "output/member_b/test_base_final_locked",
+    "run": "output/bm25/test_base_final_locked",
     "submission_check": "valid: true, errors: []",
     "status_counts": {"ok": 50},
     "completion_rate": 1.0,
@@ -37,9 +37,9 @@
     "goal": "raise AnswerEM on dev 50",
     "variants": [
       {"config": "configs/bm25.json", "policy": "sentence-level extractive (default)",
-       "answer_em": 0.0, "median_answer_chars": 150, "run": "output/member_b/dev_bm25_locked"},
+       "answer_em": 0.0, "median_answer_chars": 150, "run": "output/bm25/dev_bm25_locked"},
       {"config": "configs/bm25.span.json", "policy": "typed short span + answer-anchored quote",
-       "answer_em": 0.0, "median_answer_chars": 12.5, "run": "output/member_b/dev_bm25_span",
+       "answer_em": 0.0, "median_answer_chars": 12.5, "run": "output/bm25/dev_bm25_span",
        "answer_inside_own_quote": "50/50", "doc_ids_identical_to_baseline": "50/50"}
     ],
     "diagnosis": {

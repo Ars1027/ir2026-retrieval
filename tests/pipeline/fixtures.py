@@ -1,4 +1,4 @@
-"""Fictional fixtures for member B tests (no course data)."""
+"""Fictional fixtures for pipeline tests (no course data)."""
 from __future__ import annotations
 
 import hashlib

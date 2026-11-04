@@ -1,9 +1,8 @@
-"""Frozen data contracts shared by both members.
+"""Frozen data contracts shared by retrieval pipelines.
 
 The structures are dictionaries so that they stay JSON-serialisable and easy to
 log. This module documents the field names, provides cheap constructors and
-validation helpers, and defines the on-disk artefact layout. It is owned by
-member A: consumers (member B) only read these fields.
+validation helpers, and defines the on-disk artefact layout. Retrieval and result-assembly modules consume these fields.
 
 Offsets are Python character offsets into ``Corpus.text(doc_id)``. ``doc_id`` is
 the original course corpus ID and is never rewritten. ``rank`` starts at 1.
@@ -24,7 +23,7 @@ CHUNK_ID_SEPARATOR = "#"
 
 
 class ContractError(ValueError):
-    """Raised when a structure crosses the member boundary in the wrong shape."""
+    """Raised when a structure crosses the pipelineoundary in the wrong shape."""
 
 
 def chunk_id(doc_id: str, ordinal: int) -> str:

@@ -1,7 +1,7 @@
-"""Reserved vector interface and baseline-identity tests (member B).
+"""Reserved vector interface and baseline-identity tests (pipeline).
 
 Run from the project root:
-    python -m unittest discover -s tests/member_b -v
+    python -m unittest discover -s tests/pipeline -v
 """
 from __future__ import annotations
 

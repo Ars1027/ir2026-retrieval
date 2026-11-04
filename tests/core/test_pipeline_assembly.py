@@ -1,4 +1,4 @@
-"""Evidence, answer and result-assembly tests (member A)."""
+"""Evidence, answer and result-assembly tests (core)."""
 from __future__ import annotations
 
 import os

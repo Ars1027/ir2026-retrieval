@@ -1,3 +1,0 @@
-# Member B: run integration, aggregation and the reserved vector interface.
-# The baseline itself needs nothing beyond member A's requirements.
-numpy>=1.26,<3

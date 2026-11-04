@@ -42,3 +42,6 @@ venv/
 .vscode/
 .DS_Store
 Thumbs.db
+
+/TASK_BM25.md
+/TASK_HYBRID.md

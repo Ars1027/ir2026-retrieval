@@ -1,11 +1,7 @@
 {
   "date": "2026-11-03",
-  "tests": {
-    "original": 33,
-    "member_a": 49,
-    "member_b": 13
-  },
-  "dev": {
+  "scope": "pipeline read-only rerun of core BM25",
+  "metrics": {
     "queries": 50,
     "primary_metric": "gold_hit_at_10",
     "gold_hit_at_1": 0.2,
@@ -15,7 +11,7 @@
     "answer_em": 0.0,
     "mean_tool_calls": 0.0,
     "mean_trace_events": 5.0,
-    "mean_elapsed_seconds": 1.760736,
+    "mean_elapsed_seconds": 1.7549000000000001,
     "completion_rate": 1.0,
     "incomplete_tool_usage_queries": 0,
     "tool_usage_note": "tool_calls counts model_tool events, not fixed retrieval stages; legacy untyped events count as model tools. Timed-out workers may miss an in-flight event.",
@@ -32,36 +28,12 @@
     "citation_span_match_rate": 1.0,
     "citation_note": "Only literal source-span validity was checked; this is not semantic evidence correctness."
   },
-  "train_smoke": {
-    "queries": 3,
-    "check_exit": 0,
-    "evaluate_exit": 0
+  "official_submission_check_exit": 0,
+  "evaluate_exit": 0,
+  "identical_to_baseline_queries": 50,
+  "status_counts": {
+    "ok": 50
   },
-  "chunks": {
-    "documents": 10000,
-    "chunks": 321659,
-    "verified_spans": 321659,
-    "mismatches": 0
-  },
-  "bm25_build": {
-    "chunks": 321659,
-    "terms": 842329,
-    "postings": 29159319,
-    "build_seconds": 74.039,
-    "index_bytes": 207921947,
-    "elapsed_seconds": 74.58
-  },
-  "fixes": [
-    "Propagate retrieval recorder failure instead of silently discarding logs",
-    "Measure answer call duration from before execution"
-  ],
-  "limitations": [
-    "Default extractive answers choose overlapping sentences; ok indicates a nonempty extraction, not semantic correctness",
-    "No test split run by this review"
-  ],
-  "environment": {
-    "python": "3.13.12",
-    "system": "Windows"
-  },
-  "artifacts": "output/member_a/dev_recheck_20261103"
+  "artifacts": "output/bm25/review_bm25_20261103",
+  "vector_review": "Original IDs, spans, normalization, document RRF, source ranks and API usage propagation reviewed. Chunk hit rank fixed by main agent. Retry billing remains unknown beyond successful responses."
 }

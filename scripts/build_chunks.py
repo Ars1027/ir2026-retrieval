@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build faithful chunks for the course corpus (member A).
+"""Build faithful chunks for the course corpus (core).
 
 Usage:
     python scripts/build_chunks.py
-    python scripts/build_chunks.py --out-dir artifacts/member_a/chunks --limit 50
+    python scripts/build_chunks.py --out-dir artifacts/chunks --limit 50
 
 The builder reads corpus text only. Questions and labels are never opened.
 """
@@ -41,7 +41,7 @@ def main():
         settings.setdefault("chunking", {})["size"] = args.size
     if args.overlap is not None:
         settings.setdefault("chunking", {})["overlap"] = args.overlap
-    out_dir = args.out_dir or (ROOT / "artifacts/member_a/chunks")
+    out_dir = args.out_dir or (ROOT / "artifacts/chunks")
 
     started = time.monotonic()
     stats = chunking.write_chunks(

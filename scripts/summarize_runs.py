@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Aggregate a run directory into whitelisted metrics.
 
-    python scripts/summarize_runs.py --run-dir output/member_b/dev_bm25 --split dev \
-        --out records/member_b/dev_bm25_metrics.json
+    python scripts/summarize_runs.py --run-dir output/bm25/dev_bm25 --split dev \
+        --out records/bm25/dev_bm25_metrics.json
 
 Only aggregate numbers are written: no question text, document IDs, answers or
 quotes. Hit@k is never derived from chunk matches; it always uses
@@ -33,7 +33,7 @@ def _percentile(values, fraction):
 def _index_costs(run_dir) -> dict:
     """Build/load costs recorded in local index metadata (read-only)."""
     costs = {}
-    bm25_meta = ROOT / "artifacts/member_a/bm25/meta.json"
+    bm25_meta = ROOT / "artifacts/bm25/meta.json"
     if bm25_meta.is_file():
         meta = json.loads(bm25_meta.read_text(encoding="utf-8"))
         costs["bm25"] = {"build_seconds": (meta.get("build_stats") or {}).get("build_seconds"),

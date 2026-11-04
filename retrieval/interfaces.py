@@ -194,7 +194,7 @@ def vector_settings(settings: dict) -> dict:
             "retriever": raw.get("retriever"),
             "fusion": raw.get("fusion"),
             "top_k": int(raw.get("top_k") or settings.get("candidate_k") or 200),
-            "index_dir": raw.get("index_dir") or "artifacts/member_b/vector"}
+            "index_dir": raw.get("index_dir") or "artifacts/vector"}
 
 
 def build_vector_retriever(settings: dict) -> VectorRetriever:

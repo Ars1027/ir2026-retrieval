@@ -15,8 +15,8 @@
   "provider_required_for_failed_batch": 0.012242,
   "tests": {
     "course": 33,
-    "member_a": 49,
-    "member_b": 13,
+    "core": 49,
+    "pipeline": 13,
     "vector": 8
   },
   "hybrid_dev_metrics": null,

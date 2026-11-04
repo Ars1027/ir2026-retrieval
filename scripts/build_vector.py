@@ -1,4 +1,4 @@
-"""Build resumable embedding batches from member A's complete chunks."""
+"""Build resumable embedding batches from core's complete chunks."""
 import argparse
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor

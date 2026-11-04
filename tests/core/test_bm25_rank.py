@@ -1,4 +1,4 @@
-"""BM25 and document aggregation tests (member A)."""
+"""BM25 and document aggregation tests (core)."""
 from __future__ import annotations
 
 import sys

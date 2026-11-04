@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the BM25 index from the chunk store (member A).
+"""Build the BM25 index from the chunk store (core).
 
 Usage:
     python scripts/build_bm25.py
-    python scripts/build_bm25.py --chunks-dir artifacts/member_a/chunks --k1 0.9 --b 0.4
+    python scripts/build_bm25.py --chunks-dir artifacts/chunks --k1 0.9 --b 0.4
 """
 from __future__ import annotations
 

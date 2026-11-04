@@ -1,7 +1,7 @@
-"""Contract and configuration tests (member A).
+"""Contract and configuration tests (core).
 
 Run from the project root:
-    python -m unittest discover -s tests/member_a -v
+    python -m unittest discover -s tests/core -v
 """
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ class SettingsTests(unittest.TestCase):
             path = Path(tmp) / "vector.json"
             path.write_text(json.dumps({
                 "method": "vector-test",
-                "vector_index_dir": "artifacts/member_b/vector",
+                "vector_index_dir": "artifacts/vector",
                 "candidate_k": 50,
                 "vector": {"enabled": True,
                            "retriever": "external.backend:create_retriever",

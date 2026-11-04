@@ -4,8 +4,8 @@
     "pipeline",
     "retrieval",
     "scripts",
-    "tests/member_a",
-    "tests/member_b"
+    "tests/core",
+    "tests/pipeline"
   ],
   "exclude": [
     "corpus",

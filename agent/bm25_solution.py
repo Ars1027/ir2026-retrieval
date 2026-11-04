@@ -1,4 +1,4 @@
-"""BM25 course adapter (member A).
+"""BM25 course adapter (core).
 
 ``solve(question, tools, config)`` is the only entry point the course runner
 needs. It loads the BM25 index once per process (the runner spawns one process

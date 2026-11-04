@@ -19,9 +19,9 @@ DEFAULT_CONFIG = "configs/final.json"
 # Documented defaults; every key can be overridden in the JSON file.
 DEFAULTS = {
     "method": "bm25-v1",
-    "chunks_dir": "artifacts/member_a/chunks",
-    "bm25_index_dir": "artifacts/member_a/bm25",
-    "vector_index_dir": "artifacts/member_b/vector",
+    "chunks_dir": "artifacts/chunks",
+    "bm25_index_dir": "artifacts/bm25",
+    "vector_index_dir": "artifacts/vector",
     "candidate_k": 200,
     "chunking": {"size": 1200, "overlap": 200, "min_chars": 120},
     "bm25": {"k1": 0.9, "b": 0.4, "use_stopwords": True, "capitalized_boost": 1.25},

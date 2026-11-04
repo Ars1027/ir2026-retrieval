@@ -1,5 +1,4 @@
 {
-  "member": "B",
   "scope": "run integration, aggregation, reserved vector interface",
   "python": {
     "python": "3.14.6",
@@ -16,8 +15,8 @@
     "entry": "agent.solution -> agent.bm25_solution",
     "config": "configs/bm25.json",
     "method_type": "retrieval",
-    "dev_run": "output/member_b/dev_bm25_locked",
-    "test_run": "output/member_b/test_base_final_locked"
+    "dev_run": "output/bm25/dev_bm25_locked",
+    "test_run": "output/bm25/test_base_final_locked"
   },
   "reserved_interface": {
     "module": "retrieval/interfaces.py",
@@ -28,8 +27,8 @@
   },
   "tests": {
     "course": "python -m unittest discover -s tests -v  (33 passed)",
-    "member_a": "python -m unittest discover -s tests/member_a -v  (38 passed)",
-    "member_b": "python -m unittest discover -s tests/member_b -v  (13 passed)"
+    "core": "python -m unittest discover -s tests/core -v  (38 passed)",
+    "pipeline": "python -m unittest discover -s tests/pipeline -v  (13 passed)"
   },
   "blockers": [
     "No answer model is used: no API key on this machine, answer.mode = extractive, model tokens recorded as 0.",
@@ -39,5 +38,6 @@
   "notes": [
     "Index and query stages are recorded as retrieval events, not model tool calls.",
     "Latency includes the course runner's per-question corpus initialisation (~5.6 s)."
-  ]
+  ],
+  "component": "pipeline"
 }

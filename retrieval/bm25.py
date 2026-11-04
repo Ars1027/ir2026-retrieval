@@ -79,7 +79,7 @@ class BM25Index:
     """Persistent BM25 index; load once per process, then answer many queries."""
 
     def __init__(self, index_dir=None):
-        self.index_dir = Path(index_dir or "artifacts/member_a/bm25")
+        self.index_dir = Path(index_dir or "artifacts/bm25")
         self.ready = False
         self.meta = {}
         self.vocab = {}
@@ -209,8 +209,8 @@ def build_index(chunks_path=None, out_dir=None, params=None, limit=None,
     from retrieval.chunking import iter_chunks_file
 
     params = {**DEFAULT_PARAMS, **(params or {})}
-    chunks_path = Path(chunks_path or "artifacts/member_a/chunks")
-    out_dir = Path(out_dir or "artifacts/member_a/bm25")
+    chunks_path = Path(chunks_path or "artifacts/chunks")
+    out_dir = Path(out_dir or "artifacts/bm25")
     use_stop = bool(params.get("use_stopwords", True))
     started = time.monotonic()
 
@@ -321,5 +321,5 @@ def _read_chunk_meta(chunks_path) -> dict:
 
 
 def index_size(index_dir=None) -> int:
-    path = Path(index_dir or "artifacts/member_a/bm25")
+    path = Path(index_dir or "artifacts/bm25")
     return sum(p.stat().st_size for p in path.glob("*") if p.is_file())

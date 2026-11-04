@@ -76,7 +76,7 @@ def write_chunks(corpus_root=None, out_dir=None, settings=None, limit=None,
     """Build ``chunks.jsonl`` plus ``meta.json``; returns build statistics."""
     settings = settings or {}
     chunking = contracts.chunking_config(settings)
-    out_dir = Path(out_dir or settings.get("chunks_dir") or "artifacts/member_a/chunks")
+    out_dir = Path(out_dir or settings.get("chunks_dir") or "artifacts/chunks")
     out_dir.mkdir(parents=True, exist_ok=True)
     corpus = CorpusAdapter(corpus_root)
     doc_ids = corpus.doc_ids()
@@ -113,7 +113,7 @@ def write_chunks(corpus_root=None, out_dir=None, settings=None, limit=None,
 
 
 def load_meta(chunks_dir=None) -> dict:
-    path = Path(chunks_dir or "artifacts/member_a/chunks") / META_FILE
+    path = Path(chunks_dir or "artifacts/chunks") / META_FILE
     return json.loads(path.read_text(encoding="utf-8"))
 
 
