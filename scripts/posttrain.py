@@ -33,6 +33,17 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 
+def source_revision():
+    """Source-only coursework archives have no .git directory."""
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=ROOT,
+                         capture_output=True, text=True)
+    if top.returncode or Path(top.stdout.strip()).resolve() != ROOT.resolve():
+        return None
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                            capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
 def command(parts, env=None, log=None):
     print("+ " + " ".join(map(str, parts)), flush=True)
     if log is None:
@@ -62,7 +73,7 @@ def download_models():
                                                   "file_sha256": files})
 
 
-def run_split(config_path, split, output, limit=None, collect=False):
+def run_split(config_path, split, output, limit=None, collect=False, resume=False, resource_reference=None):
     config_path, output = resolve_path(config_path), resolve_path(output)
     config = load_config(config_path)
     if collect and split != "train":
@@ -91,13 +102,32 @@ def run_split(config_path, split, output, limit=None, collect=False):
     if limit is not None:
         cmd += ["--limit", str(limit)]
     started = time.monotonic()
-    command(cmd, env)
+    if resume:
+        if limit is not None or collect:
+            raise ValueError("resume requires a complete official student split")
+        from posttraining.resume import resume_run
+        previous = {key: os.environ.get(key) for key in ("IR2026_POSTTRAIN_CONFIG", "IR2026_DECISIONS_DIR")}
+        os.environ["IR2026_POSTTRAIN_CONFIG"] = str(output / "method_config.json")
+        os.environ["IR2026_DECISIONS_DIR"] = str(output / "decisions")
+        try:
+            resume_run(ROOT, output, config, resources, label,
+                       resolve_path(resource_reference) if resource_reference else None)
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+    else:
+        command(cmd, env)
     write_json(output / "method_config.json", config)
     info_path = output / "run_info.json"
     info = json.loads(info_path.read_text())
     info["comparison_signature"] = comparison_signature(config)
     info["resources"] = resources
-    info["wall_seconds"] = round(time.monotonic() - started, 3)
+    info["resumed_session_wall_seconds" if resume else "wall_seconds"] = round(time.monotonic() - started, 3)
+    if resume:
+        info["execution_note"] = "User-paused run resumed; completed records retained, partial attempts archived. Per-query times exclude the pause."
     write_json(info_path, info)
     check = [sys.executable, "check_results.py", "--split", split, "--run-dir", str(output)]
     if limit is None:
@@ -166,12 +196,12 @@ def train(config_path):
               "wall_seconds": round(time.monotonic() - started, 3), "versions": versions,
               "python": platform.python_version(), "platform": platform.platform(),
               "resources": json.loads(resource_lines[-1]),
-              "source_git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+              "source_git_commit": source_revision(),
               "adapter_bytes": (adapter / "adapters.safetensors").stat().st_size,
               "adapter_sha256": sha256(adapter / "adapters.safetensors"),
               "log_sha256": sha256(log), "config_sha256": sha256(config_path),
               "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in
-                                 sorted((ROOT / "posttraining").glob("*.py"))}}
+                                 [*sorted((ROOT / "posttraining").glob("*.py")), ROOT / "scripts/posttrain.py"]}}
     write_json(adapter / "training_summary.json", record)
     write_json(ROOT / "records/posttraining/training_summary.json", record)
 
@@ -224,6 +254,8 @@ def main():
     run.add_argument("--split", choices=["train", "dev", "test"], required=True)
     run.add_argument("--output", required=True)
     run.add_argument("--limit", type=int)
+    run.add_argument("--resume", action="store_true")
+    run.add_argument("--resource-reference", help="prior run_info.json with matching prompt/index/base hashes for legacy interrupted runs")
     comparison = commands.add_parser("compare")
     comparison.add_argument("--before", required=True)
     comparison.add_argument("--after", required=True)
@@ -255,7 +287,8 @@ def main():
         write_json(ROOT / "records/posttraining/data_statistics_balanced.json", stats)
         print(json.dumps(stats, indent=2))
     elif args.action == "run":
-        run_split(args.config, args.split, args.output, args.limit)
+        run_split(args.config, args.split, args.output, args.limit,
+                  resume=args.resume, resource_reference=args.resource_reference)
     elif args.action == "compare":
         compare(args.before, args.after, args.output)
     elif args.action == "freeze":

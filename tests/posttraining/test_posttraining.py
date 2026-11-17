@@ -17,6 +17,7 @@ from posttraining.config import comparison_signature
 from posttraining.data import build_dataset, rebalance_dataset, training_ids
 from posttraining.policy import SYSTEM_PROMPT, encode, messages_for, parse_action
 from posttraining.tools import IndexedTools
+from posttraining.resume import remaining_questions
 
 
 class Corpus:
@@ -61,6 +62,15 @@ class PolicyTests(unittest.TestCase):
     def tools(self):
         supplied = CorpusTools(Corpus(), "fiction-q", method_type="agent")
         return supplied, IndexedTools(supplied, Retriever(), {})
+
+    def test_resume_preserves_completed_failures_and_only_returns_unfinished_queries(self):
+        questions = [{"id": "a"}, {"id": "b"}, {"id": "c"}]
+        results = [{"id": "a", "status": "budget_exceeded"}, {"id": "b", "status": "ok"}]
+        self.assertEqual(remaining_questions(questions, results), [{"id": "c"}])
+        self.assertEqual(results[0]["status"], "budget_exceeded")
+        for bad in ([{"id": "a"}, {"id": "c"}], [{"id": "a"}, {"id": "a"}], [{"id": "other"}]):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                remaining_questions(questions, bad)
 
     def test_rejects_unrecognized_fields_and_non_json(self):
         for raw in ['hello', '{"action":"delete"}', '{"action":"search","query":"hi","extra":1}']:

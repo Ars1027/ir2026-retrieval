@@ -56,6 +56,7 @@ def make_delivery(root, before, after, test, teacher, output):
              "## 数据与实际训练", "",
              f"教师为本地 Qwen3-4B-Instruct-2507（4-bit），学生为本地 Qwen2.5-1.5B-Instruct（4-bit）。只从 train100 采集教师轨迹。",
              f"质量筛选后，训练/内部验证题数为 {training['data']['accepted_questions']}，逐步样本数为 {training['data']['examples']}。",
+             f"唯一逐步样本数为 {training['data'].get('unique_examples', training['data']['examples'])}；采样设置为 {training['data'].get('sampling', '不重复采样')}。验证样本不重复采样。",
              f"监督来源统计：{training['data']['target_sources']}。最终答案只在当前输入的 gold 原文可逐字核验时保留；必要时明确使用训练标签校正，原始教师输出保留在决策文件。",
              f"实际完成 {training['selected_checkpoint']['iteration']} 次更新，耗时 {training['wall_seconds']:.1f} 秒。LoRA 参数与软件版本见 training_summary.json。",
              f"适配器大小 {training['adapter_bytes']} bytes；SHA256 `{training['adapter_sha256']}`。", "",
@@ -101,22 +102,40 @@ def make_delivery(root, before, after, test, teacher, output):
     report = after.parent / "BONUS2_REPORT.md"
     report.write_text("\n".join(lines), encoding="utf-8")
     output.parent.mkdir(parents=True, exist_ok=True)
-    source_files = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], cwd=root).decode().split("\0")
+    if (root / ".source_inventory.json").exists() and not (root / ".git").exists():
+        source_files = json.loads((root / ".source_inventory.json").read_text())["files"]
+    else:
+        source_files = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+                                               cwd=root, stderr=subprocess.DEVNULL).decode().split("\0")
+    source_files = [name for name in source_files if name and name != ".source_inventory.json"]
+    for name in source_files:
+        path = Path(name)
+        if path.is_absolute() or ".." in path.parts or not (root / path).resolve().is_relative_to(root.resolve()):
+            raise ValueError("source inventory contains a path outside the project")
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name in source_files:
             path = root / name
-            if name and path.is_file() and not path.is_symlink():
+            if name == "weights/posttraining/adapters.safetensors":
+                continue  # Add the verified selected adapter exactly once below.
+            if path.is_file() and not path.is_symlink():
                 archive.write(path, "source/" + name)
+        archive.writestr("source/.source_inventory.json", json.dumps({"files": source_files}, indent=2) + "\n")
         for name, directory in (("before_dev", before), ("after_dev", after), ("test_final", test), ("teacher_train", teacher)):
             for path in sorted(directory.rglob("*")):
                 if path.is_file():
                     archive.write(path, f"runs/{name}/" + str(path.relative_to(directory)))
         for name in ("adapters.safetensors", "adapter_config.json", "training.log", "training_summary.json"):
-            archive.write(adapter / name, "adapter/" + name)
+            target = "source/weights/posttraining/adapters.safetensors" if name == "adapters.safetensors" else "training/" + name
+            archive.write(adapter / name, target)
         data_dir = resolve_path(training["training"]["data"])
         for path in data_dir.iterdir():
             if path.is_file():
                 archive.write(path, "training_data/" + path.name)
         archive.write(report, "BONUS2_REPORT.md")
+        archive.writestr("DELIVERY_README.md", "# 附加题 2 课程内部交付\n\n"
+                         "source/ 是可运行源码和冻结适配器；runs/ 保存完整训练教师、验证前后和最终测试的结果及日志。\n"
+                         "training_data/ 是训练样本与逐步来源，training/ 是训练日志和参数记录。\n"
+                         "按 source/docs/POSTTRAINING.md 配置课程数据与基础模型后运行；它们没有重复打包。\n"
+                         "本包包含课程问答和轨迹，仅在课程内部交接；公开 PR 使用聚合结果和适配器。\n")
     return {"archive_bytes": output.stat().st_size, "archive_sha256": sha256(output),
             "report": str(report), "archive": str(output)}
