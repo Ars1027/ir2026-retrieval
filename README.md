@@ -4,6 +4,7 @@
 
 - [实验结果与产物](docs/RESULTS.md)：完整 dev50 对照、test50 检查、资源统计。
 - [附加题交接](docs/HANDOFF.md)：可复用模块、扩展入口、实验流程。
+- [附加题 2：小模型后训练](docs/POSTTRAINING.md)：本地教师轨迹、仅监督模型动作的 LoRA、同模型训练前后对照和冻结测试入口。
 - [Git 文件核对](docs/REPOSITORY_STATUS.md)：远程已有文件与本地交付产物。
 - [向量接口](VECTOR_PLUGIN_GUIDE.md)：编码、索引与融合契约。
 - [课程协议](SPEC.md)与[数据使用约定](DATA_USE.md)。
