@@ -14,7 +14,8 @@ def plot_records(root):
     train = json.loads((directory / "training_summary.json").read_text())
     comparison = json.loads((directory / "dev_comparison.json").read_text())
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10,
-                         "axes.spines.top": False, "axes.spines.right": False})
+                         "axes.spines.top": False, "axes.spines.right": False,
+                         "svg.hashsalt": "ir2026-bonus2"})
     fig, (loss_ax, metrics_ax) = plt.subplots(1, 2, figsize=(12.5, 4.1), layout="constrained")
     curve = train["training_loss"]
     loss_ax.plot([r["iteration"] for r in curve], [r["loss"] for r in curve],
@@ -42,5 +43,7 @@ def plot_records(root):
     metrics_ax.set_axisbelow(True)
     metrics_ax.legend(frameon=False)
     fig.savefig(directory / "training_and_dev.png", dpi=180)
-    fig.savefig(directory / "training_and_dev.svg")
+    svg_path = directory / "training_and_dev.svg"
+    fig.savefig(svg_path, metadata={"Date": None})
+    svg_path.write_text("\n".join(line.rstrip() for line in svg_path.read_text().splitlines()) + "\n")
     plt.close(fig)
