@@ -18,7 +18,7 @@ def make_delivery(root, before, after, test, teacher, output):
         raise ValueError("delivery archive already exists; use a new name")
     comparison = compare_runs(root, before, after)
     test_summary, _ = describe_run(root, test, split="test")
-    describe_run(root, teacher, split="train")
+    teacher_summary, _ = describe_run(root, teacher, split="train")
     after_config = json.loads((after / "method_config.json").read_text())
     adapter = resolve_path(after_config["model"]["adapter_path"])
     training = json.loads((adapter / "training_summary.json").read_text())
@@ -50,16 +50,30 @@ def make_delivery(root, before, after, test, teacher, output):
             break
         if qid not in {i[1] for i in selected}:
             selected.append(("补充对照", qid))
+    case_notes = {}
+    case_file = after.parent / "case_selection.json"
+    if case_file.exists():
+        cases = json.loads(case_file.read_text())
+        ids = [row["id"] for row in cases]
+        if len(ids) != 4 or len(set(ids)) != 4 or not set(ids) <= set(questions):
+            raise ValueError("case selection needs four distinct official dev questions")
+        selected = [(row["kind"], row["id"]) for row in cases]
+        case_notes = {row["id"]: row.get("analysis", "") for row in cases}
     lines = ["# 附加题 2：基于教师轨迹的小模型后训练", "",
              "本报告是小组报告的附加题 2 章节。题目、答案、引用和逐题轨迹仅在课程内部交付。", "",
              "实现与复现说明见 source/docs/POSTTRAINING.md。基础模型、课程语料和标签未重复打包。", "",
              "## 数据与实际训练", "",
              f"教师为本地 Qwen3-4B-Instruct-2507（4-bit），学生为本地 Qwen2.5-1.5B-Instruct（4-bit）。只从 train100 采集教师轨迹。",
+             f"教师完整 train100：Hit@10={teacher_summary['metrics']['gold_hit_at_10']:.2f}，AnswerEM={teacher_summary['metrics']['answer_em']:.2f}；该成绩不与学生 dev50 直接横比。",
              f"质量筛选后，训练/内部验证题数为 {training['data']['accepted_questions']}，逐步样本数为 {training['data']['examples']}。",
              f"唯一逐步样本数为 {training['data'].get('unique_examples', training['data']['examples'])}；采样设置为 {training['data'].get('sampling', '不重复采样')}。验证样本不重复采样。",
              f"监督来源统计：{training['data']['target_sources']}。最终答案只在当前输入的 gold 原文可逐字核验时保留；必要时明确使用训练标签校正，原始教师输出保留在决策文件。",
+             f"唯一目标来源为 {training['data'].get('unique_target_sources', training['data']['target_sources'])}；上方重复采样计数不代表新增题目或新增教师轨迹。",
              f"实际完成 {training['selected_checkpoint']['iteration']} 次更新，耗时 {training['wall_seconds']:.1f} 秒。LoRA 参数与软件版本见 training_summary.json。",
              f"适配器大小 {training['adapter_bytes']} bytes；SHA256 `{training['adapter_sha256']}`。", "",
+             f"最终固定训练配置：{training['training']['num_layers']} 层、LoRA rank={training['training']['lora_parameters']['rank']}、scale={training['training']['lora_parameters']['scale']}、学习率={training['training']['learning_rate']}、seed={training['training']['seed']}。",
+             f"实测资源：{training.get('resources', {})}。统一内存下的设备分配与进程 RSS 有重叠，不相加。", "",
+             "初始16层、学习率1e-4、240步方案完成了训练，但开发筛查出现重复生成，6题后中止；其40/80步检查点在各3道train题上也全部耗尽预算。这些中止/诊断运行不是完整dev50成绩。最终另训4层、学习率2e-5、终止样本训练侧重复3次的120步方案，测试前固定权重，不用测试反馈调参。", "",
              "以历史观测预测下一步动作和答案；只对最后一条 assistant 消息计算损失，工具返回和历史动作全部屏蔽。按原始训练题划分内部验证，不使用课程 dev/test 题训练或筛选教师轨迹。", "",
              "## 完整 dev50 对照", "",
              "| 指标 | 训练前 | 训练后 |", "| --- | ---: | ---: |"]
@@ -84,8 +98,16 @@ def make_delivery(root, before, after, test, teacher, output):
                   "", "训练后短答案：" + (result["answer"] or "（空）"),
                   "", "gold 文档：" + ", ".join(labels[qid]["gold_doc_ids"]),
                   "", "训练后排序：" + ", ".join(result["doc_ids"]), "", "实际模型动作：", ""]
-        for decision in decisions:
-            lines.append(f"- 回合 {decision['turn'] + 1}：`{decision.get('output') or '（生成失败）'}`")
+        displayed = decisions if len(decisions) <= 4 else decisions[:3] + decisions[-1:]
+        lines.append(f"共 {len(decisions)} 个模型回合，展示前 3 个及最后 1 个（不足 4 个则全部展示）；完整决策保留在对应 runs/after_dev/decisions/ 文件中。")
+        for decision in displayed:
+            text = decision.get("output") or "（生成失败）"
+            if len(text) > 360:
+                text = text[:360] + " … [展示截断，完整原始输出见决策日志]"
+            lines += ["", f"回合 {decision['turn'] + 1}，动作有效={decision.get('action_valid', False)}：", "",
+                      "````text", text, "````"]
+            if decision.get("error"):
+                lines += ["", "校验反馈：" + decision["error"]]
         lines += ["", "实际返回给模型、并进入最终输出的原文引用：", ""]
         for evidence in result["evidence"][:2]:
             lines += [f"> 文档 {evidence['doc_id']}", ">", *["> " + s for s in evidence["text"].splitlines()], ""]
@@ -95,10 +117,12 @@ def make_delivery(root, before, after, test, teacher, output):
             lines.append("检索分析：最终前 10 篇未覆盖标注答案文档，这是可确认的召回/排序失败。")
         else:
             lines.append("检索分析：最终前 10 篇覆盖了标注答案文档；还需结合上面的阅读动作和引用核查是否读到关键证据。")
+        if case_notes.get(qid):
+            lines += ["", "人工复核：" + case_notes[qid]]
     lines += ["", "## 冻结 test50 与限制", "",
               f"最终 test 完整覆盖 {test_summary['queries']} 题，检查错误数为 {test_summary['validation_errors']}，状态分布为 {test_summary['status_counts']}。",
               "测试标签由教师持有，本地不计算测试命中率或正确率；测试前冻结适配器 SHA256，不据测试结果调参。",
-              "本实验只有 100 道原始训练题、一个训练种子和一套小模型；训练步骤多于独立监督题数，存在过拟合风险。GoldHit 过滤仅验证文档命中，最终答案监督另做可见原文校验和训练标签校正。原文包含答案也不自动证明模型验证了所有问题条件；引用检查仅证明连续匹配。", ""]
+              "100道原始训练题中，实际用于梯度训练的只有20题；内部验证仅1题4个状态且没有保留终止目标。只有一个训练种子，训练层数、学习率和采样比例同时改变，无法分离单项因素贡献。GoldHit过滤仅验证文档命中，最终答案监督另做可见原文校验和训练标签校正；原文包含答案也不自动证明模型验证了所有问题条件。引用检查只证明连续匹配，不能代替语义复核。", ""]
     report = after.parent / "BONUS2_REPORT.md"
     report.write_text("\n".join(lines), encoding="utf-8")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -132,6 +156,8 @@ def make_delivery(root, before, after, test, teacher, output):
             if path.is_file():
                 archive.write(path, "training_data/" + path.name)
         archive.write(report, "BONUS2_REPORT.md")
+        if case_file.exists():
+            archive.write(case_file, "runs/case_selection.json")
         archive.writestr("DELIVERY_README.md", "# 附加题 2 课程内部交付\n\n"
                          "source/ 是可运行源码和冻结适配器；runs/ 保存完整训练教师、验证前后和最终测试的结果及日志。\n"
                          "training_data/ 是训练样本与逐步来源，training/ 是训练日志和参数记录。\n"

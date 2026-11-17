@@ -1,0 +1,20 @@
+{
+  "chunks": 321659,
+  "documents": 10000,
+  "chunk_build_seconds": 2.913,
+  "chunk_verify": {
+    "checked": 321659,
+    "bad": [],
+    "ok": true
+  },
+  "bm25": {
+    "chunks": 321659,
+    "terms": 842329,
+    "postings": 29159319,
+    "build_seconds": 41.68,
+    "index_bytes": 207921905,
+    "elapsed_seconds": 41.882
+  },
+  "manifest_sha256": "4972dfeaecd76d5e0a2ecd601d7c6dae22ea4d0b504f82f4a035583924ea9af1",
+  "chunk_full_verification_seconds": 4.294
+}

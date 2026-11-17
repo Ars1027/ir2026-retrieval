@@ -1,0 +1,9 @@
+{
+  "completed_before": 28,
+  "completed_after": 50,
+  "retained_prefix_byte_hash_matches": true,
+  "retained_failures": true,
+  "archived_partial_files": 1,
+  "per_query_time_excludes_user_pause": true,
+  "extra_interrupted_computation": "kept in separate private decision archive, not included in completed-attempt latency"
+}

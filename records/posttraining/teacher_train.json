@@ -1,0 +1,46 @@
+{
+  "queries": 100,
+  "validation_errors": 0,
+  "method": "bonus2-qwen3-4b-teacher-bm25-v2",
+  "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit@50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "status_counts": {
+    "ok": 88,
+    "budget_exceeded": 3,
+    "no_answer": 9
+  },
+  "model_calls": 509,
+  "mean_model_calls": 5.09,
+  "queries_with_unknown_model_calls": 0,
+  "tool_counts": {
+    "search": 112,
+    "read": 241
+  },
+  "invalid_actions": 58,
+  "fallback_rankings": 3,
+  "tokens": {
+    "input": 1036344,
+    "output": 19955,
+    "queries_with_unknown_usage": 0
+  },
+  "mean_elapsed_seconds": 21.727352999999997,
+  "results_sha256": "81969b0e6a601e1e516126a9a7be987693f457fd399e14ad29a6652832e61f7d",
+  "cost_note": "Local MLX inference; token counts include repeated history; API cost=0, electricity not measured.",
+  "metrics": {
+    "queries": 100,
+    "primary_metric": "gold_hit_at_10",
+    "gold_hit_at_1": 0.2,
+    "gold_hit_at_5": 0.23,
+    "gold_hit_at_10": 0.23,
+    "evidence_recall_at_10": 0.10052777777777777,
+    "answer_em": 0.05,
+    "mean_tool_calls": 3.53,
+    "mean_trace_events": 3.53,
+    "mean_elapsed_seconds": 21.727352999999997,
+    "completion_rate": 0.88,
+    "incomplete_tool_usage_queries": 0,
+    "tool_usage_note": "tool_calls counts model_tool events, not fixed retrieval stages; legacy untyped events count as model tools. Timed-out workers may miss an in-flight event.",
+    "effect_points_out_of_6": 1.38,
+    "answer_em_note": "Conservative normalized exact match, NOT official semantic/LLM-judge accuracy.",
+    "evidence_note": "Recall over the released evidence-document IDs, not exhaustive semantic relevance."
+  }
+}

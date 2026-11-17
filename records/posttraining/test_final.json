@@ -1,0 +1,29 @@
+{
+  "queries": 50,
+  "validation_errors": 0,
+  "method": "bonus2-qwen25-1.5b-lora-conservative-bm25-v2",
+  "model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit@8b403126fc14f14cfc99bb4cfa72ecbc129ea677+lora:d7d1454bc488246c",
+  "status_counts": {
+    "budget_exceeded": 27,
+    "ok": 23
+  },
+  "model_calls": 424,
+  "mean_model_calls": 8.48,
+  "queries_with_unknown_model_calls": 0,
+  "tool_counts": {
+    "search": 46,
+    "read": 102
+  },
+  "invalid_actions": 255,
+  "fallback_rankings": 27,
+  "tokens": {
+    "input": 922749,
+    "output": 38585,
+    "queries_with_unknown_usage": 0
+  },
+  "mean_elapsed_seconds": 17.665282,
+  "results_sha256": "557afd080ba4e0111f9916722dd2fa137ca804bf4a43250c314f24177c90158a",
+  "cost_note": "Local MLX inference; token counts include repeated history; API cost=0, electricity not measured.",
+  "metrics": null,
+  "metrics_note": "Test labels are teacher-only; no test accuracy is inferred."
+}

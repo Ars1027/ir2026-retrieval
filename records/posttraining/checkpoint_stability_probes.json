@@ -1,0 +1,27 @@
+{
+  "probes": [
+    {
+      "checkpoint": 40,
+      "split": "train",
+      "queries": 3,
+      "status_counts": {
+        "budget_exceeded": 3
+      },
+      "invalid_actions": 35,
+      "model_calls": 36,
+      "probe_only_not_dev_score": true
+    },
+    {
+      "checkpoint": 80,
+      "split": "train",
+      "queries": 3,
+      "status_counts": {
+        "budget_exceeded": 3
+      },
+      "invalid_actions": 36,
+      "model_calls": 36,
+      "probe_only_not_dev_score": true
+    }
+  ],
+  "decision": "Earlier checkpoints of the initial high-capacity recipe also degenerated; train a separate smaller/lower-learning-rate candidate with finish oversampling. Test untouched."
+}

@@ -16,7 +16,7 @@
 
 因此本方法是教师动作蒸馏与有原文支持的训练答案监督的组合，不将标签校正声称为教师原答。校正数量、目标来源和剔除原因单独统计；不改写已发生的工具轨迹，不给推理进程提供标签。所有被过滤轨迹仍保存在原始采集目录中，并计入教师完整训练集评测。
 
-原始训练题按固定种子 2026 的哈希排序，先按题划出 10% 作为内部验证，再过滤、展开成逐步样本。同一道题的不同回合不会分散到训练和内部验证两侧。课程 dev50 只用于模型完整对照评测；test 只在方法冻结后运行。
+原始训练题按固定种子 2026 的哈希排序，先按题划出 10% 作为内部验证，再过滤、展开成逐步样本。同一道题的不同回合不会分散到训练和内部验证两侧。课程 dev 用于开发筛查和完整对照评测；test 只在方法冻结后运行，不参与训练、筛选或调参。
 
 每条样本保存教师作出该动作前的**实际输入 messages**，追加该次教师输出。使用 [MLX-LM 的 LoRA 训练](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/LORA.md)，`mask_prompt=true`，只计算最后一条 assistant 消息的损失。此前的模型动作、错误提示和工具返回均不作为生成目标。预处理逐条检查 chat-template 前缀和实际 token 长度，超长样本过滤并统计，不静默截断监督目标。
 
@@ -64,6 +64,16 @@ bash run_bonus2.sh run --config configs/posttraining/student_frozen.json \
 
 `run` 调用原课程 `run.py`，每题独立子进程运行并由父进程执行硬超时。模型每题加载时间包含在单题耗时中。每次运行自动执行 `check_results.py`；train/dev 还执行 `evaluate.py`。完整划分使用 `--submission` 检查。test 配置必须包含已训练适配器的冻结摘要，适配器变化会拒绝运行。
 
+外部暂停后，可用 `run --resume` 接续原目录。续跑复用课程的同一 worker 和超时处理，先核对官方问题序列、已完成结果、模型/适配器标识，以及提示词、索引和基座权重摘要。已完成的失败题也会保留；没有最终结果的中断题目才会重新运行，其旧决策/观测另存到 `interrupted_attempts/`。早期未持久化资源摘要的运行须提供条件匹配的完整对照记录，例如：
+
+```bash
+bash run_bonus2.sh run --config configs/posttraining/student_after.json \
+  --split dev --output output/posttraining/student_after_dev_final --resume \
+  --resource-reference output/posttraining/student_before_dev_v2/run_info.json
+```
+
+`resume_history.jsonl` 保存接续前结果摘要、原样保留数量和中断文件位置。单题耗时不含用户暂停时间；被中断尝试的额外计算留在单独日志中，不混入完整尝试的单题耗时。
+
 对照汇总不仅比较配置，还核对实际提示词、BM25 文件和基础权重摘要。必须完整覆盖 dev50，失败也留在分母中；报告 Hit@1/5/10、EvidenceRecall@10、AnswerEM、状态、耗时、模型调用、工具调用与 token。token 统计来自实际本地生成器；中断或失败生成无法取得完整统计时使用 `null`。本地推理的 API 调用费用为 0，电费未计量。
 
 ```bash
@@ -78,10 +88,13 @@ bash run_bonus2.sh run --config configs/posttraining/student_frozen.json \
 | 采集、预处理、训练、运行、汇总统一入口 | `scripts/posttrain.py`、`run_bonus2.sh` |
 | 动作协议、实际观测和推理 | `posttraining/policy.py`、`tools.py`、`agent.py` |
 | 完整轨迹和教师逐步决策 | `output/posttraining/teacher_train/` |
-| SFT 样本、来源和数据统计 | `artifacts/posttraining/data/` |
-| LoRA 权重、配置和训练日志 | `artifacts/posttraining/adapter/` |
+| 唯一 SFT 样本、来源和数据统计 | `artifacts/posttraining/data/` |
+| 最终训练采样数据 | `artifacts/posttraining/data_balanced/` |
+| 最终 LoRA 权重、配置和训练日志 | `artifacts/posttraining/adapter_conservative/` |
+| 初始 240 步方案的训练产物 | `artifacts/posttraining/adapter/` |
 | 可直接检查和加载的冻结适配器 | `weights/posttraining/` |
-| 训练前后逐题输出 | `output/posttraining/student_*_dev/` |
+| 训练前后完整 dev 输出 | `output/posttraining/student_before_dev_v2/`、`output/posttraining/student_after_dev_final/` |
+| 冻结 test50 输出 | `output/posttraining/student_test_final/` |
 | 公开的聚合记录 | `records/posttraining/` |
 
 遵循 [DATA_USE.md](../DATA_USE.md)，公开 PR 包含代码、配置、合成测试、聚合结果和冻结 LoRA 适配器；不公开反混淆问答、文档原文、逐题决策或搜索轨迹。本地课程交付包另含数据统计、完整验证/测试结果与日志、训练数据和带案例的报告；不重复打包课程语料、标签、基础模型或缓存。

@@ -20,8 +20,11 @@ def plot_records(root):
     loss_ax.plot([r["iteration"] for r in curve], [r["loss"] for r in curve],
                  color="#246B97", label="Training (mean over reporting interval)")
     curve = train["validation_loss"]
+    valid_questions = train["data"]["accepted_questions"]["valid"]
+    valid_states = train["data"]["examples"]["valid"]
     loss_ax.plot([r["iteration"] - 1 for r in curve], [r["loss"] for r in curve],
-                 color="#C45D28", marker="o", markersize=4, label="Held-out training questions")
+                 color="#C45D28", marker="o", markersize=4,
+                 label=f"Held-out train ({valid_questions} question, {valid_states} states)")
     loss_ax.set(xlabel="Optimizer updates", ylabel="Assistant-target cross entropy",
                 title="(a) Actual QLoRA training")
     loss_ax.grid(axis="y", alpha=0.2)

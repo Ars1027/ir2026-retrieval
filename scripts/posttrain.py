@@ -76,6 +76,8 @@ def download_models():
 def run_split(config_path, split, output, limit=None, collect=False, resume=False, resource_reference=None):
     config_path, output = resolve_path(config_path), resolve_path(output)
     config = load_config(config_path)
+    if resume and json.loads((output / "run_info.json").read_text()).get("split") != split:
+        raise ValueError("requested split differs from the interrupted run")
     if collect and split != "train":
         raise ValueError("teacher collection is restricted to train")
     if split == "test":
