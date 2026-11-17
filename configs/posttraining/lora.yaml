@@ -1,0 +1,23 @@
+model: models/student
+train: true
+fine_tune_type: lora
+optimizer: adamw
+data: artifacts/posttraining/data_balanced
+seed: 2026
+num_layers: 4
+batch_size: 1
+grad_accumulation_steps: 1
+iters: 120
+val_batches: -1
+learning_rate: 2.0e-05
+steps_per_report: 10
+steps_per_eval: 20
+adapter_path: artifacts/posttraining/adapter_conservative
+save_every: 20
+max_seq_length: 4096
+grad_checkpoint: true
+mask_prompt: true
+lora_parameters:
+  rank: 8
+  dropout: 0.05
+  scale: 8.0

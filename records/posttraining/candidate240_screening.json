@@ -1,0 +1,11 @@
+{
+  "scope": "aborted development screening, not full-split evaluation",
+  "completed_queries": 6,
+  "planned_queries": 50,
+  "status_counts": {
+    "budget_exceeded": 6
+  },
+  "reason": "Repeated reads and repeated-token unterminated JSON on held-out dev prompts; retain raw outputs, select an earlier checkpoint using train-only behaviour probes before final full dev/test.",
+  "adapter_sha256": "b2c658937b001559b837d8f5e4643729a8d4f9f38b9da1dec77d8202ada06ec8",
+  "metrics": null
+}

@@ -1,0 +1,26 @@
+{
+  "release": "IR2026-BCP-200-v1",
+  "teacher_split": "train",
+  "teacher_queries": 100,
+  "student_comparison_split": "dev",
+  "student_queries_per_run": 50,
+  "test_queries": 50,
+  "test_after_freeze_only": true,
+  "training_updates": 120,
+  "training_seed": 2026,
+  "checkpoint_selection": "fixed final iteration; no test feedback",
+  "student_setup_signature": "7efa74f87720235a0cb4cff3df8d3015d6cfeedd49c72e09743d6761bda6ab3a",
+  "prompt_sha256": "5c16a96aa0cb256bc63245938e2996d50e9a2b380ab031fcbb784177344813dc",
+  "training_data_quality": "teacher search/read actions from status=ok gold-hit trajectories; finish targets require gold answer in currently visible gold passages; answer corrections explicitly labelled as train-label supervision",
+  "initial_candidate_updates": 240,
+  "final_recipe": {
+    "layers": 4,
+    "rank": 8,
+    "scale": 8,
+    "learning_rate": 2e-05,
+    "finish_train_multiplier": 3
+  },
+  "training_source_commit": "a3916ecc77fa1e0caaa5494c4093c27312e3590e",
+  "selection_note": "Initial 240-update candidate aborted after6 dev queries due degeneration; 40/80 train3 probes also failed. Final conservative120-update candidate chosen after train-only stability probe; full dev50 and frozen test50 use this final candidate.",
+  "initial_training_source_commit": "1739ec54be9a3ee096e2ef630754d66f01cfec3a"
+}

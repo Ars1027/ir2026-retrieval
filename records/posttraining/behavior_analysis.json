@@ -1,0 +1,18 @@
+{
+  "queries": 50,
+  "gold_hit_status_counts": {
+    "ok": 7,
+    "budget_exceeded": 4
+  },
+  "gold_observed_but_not_in_final_ranking": 0,
+  "invalid_action_categories": {
+    "read_range": 3,
+    "schema_keys": 24,
+    "json_parse": 148,
+    "schema_values_or_state": 54
+  },
+  "notes": [
+    "A budget-exceeded result may still contain an actually retrieved gold document; this is not a correct final answer.",
+    "Lower tool-call count does not mean lower model cost; invalid text generation is counted in calls/tokens."
+  ]
+}

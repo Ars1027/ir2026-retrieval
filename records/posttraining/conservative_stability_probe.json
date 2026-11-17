@@ -1,0 +1,11 @@
+{
+  "scope": "train-only stability probe",
+  "queries": 3,
+  "status_counts": {
+    "ok": 1,
+    "budget_exceeded": 2
+  },
+  "invalid_actions": 22,
+  "model_calls": 27,
+  "decision": "Use conservative 120-update candidate for full dev50. No test feedback."
+}

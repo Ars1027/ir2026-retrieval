@@ -1,0 +1,219 @@
+{
+  "status": "completed",
+  "training": {
+    "model": "models/student",
+    "train": true,
+    "fine_tune_type": "lora",
+    "optimizer": "adamw",
+    "data": "artifacts/posttraining/data_balanced",
+    "seed": 2026,
+    "num_layers": 4,
+    "batch_size": 1,
+    "grad_accumulation_steps": 1,
+    "iters": 120,
+    "val_batches": -1,
+    "learning_rate": 2e-05,
+    "steps_per_report": 10,
+    "steps_per_eval": 20,
+    "adapter_path": "artifacts/posttraining/adapter_conservative",
+    "save_every": 20,
+    "max_seq_length": 4096,
+    "grad_checkpoint": true,
+    "mask_prompt": true,
+    "lora_parameters": {
+      "rank": 8,
+      "dropout": 0.05,
+      "scale": 8.0
+    }
+  },
+  "base_model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+    "revision": "8b403126fc14f14cfc99bb4cfa72ecbc129ea677",
+    "path": "models/student",
+    "adapter_path": null,
+    "max_input_tokens": 8192,
+    "max_output_tokens": 256,
+    "temperature": 0
+  },
+  "data": {
+    "source_split": "train",
+    "source_questions": 100,
+    "seed": 2026,
+    "internal_validation_questions_before_filter": 10,
+    "accepted_questions": {
+      "valid": 1,
+      "train": 20
+    },
+    "examples": {
+      "train": 98,
+      "valid": 4
+    },
+    "action_counts": {
+      "search": 23,
+      "read": 43,
+      "finish": 36
+    },
+    "filtered": {
+      "finish_without_visible_gold_answer": 9,
+      "trajectory_misses_gold_document": 67,
+      "trajectory_not_ok": 12,
+      "invalid_action": 13
+    },
+    "target_sources": {
+      "teacher_action": 81,
+      "visible_gold_train_label_correction": 21
+    },
+    "max_sequence_tokens": 3831,
+    "supervised_tokens": 3287,
+    "mask_prompt": true,
+    "tool_observations_are_targets": false,
+    "quality_filter": "trajectory status=ok and train GoldHit@10=1; finish requires the train answer in a visible final gold passage; wrong final answers are explicitly corrected from train labels",
+    "file_sha256": {
+      "train.jsonl": "8572d27b9522165a66ec524fa0431fb03f991a11d0fbd10b16f7103e23915d49",
+      "valid.jsonl": "362d52155dd82de8804a5893b7ac3207cb20cc05c3ceeb9d9b608e87005830c9"
+    },
+    "source_sha256": {
+      "train.jsonl": "49013a49d92a0f35067aa7133b188006724f8ff9b9b61feda098262869478c53",
+      "train_labels.jsonl": "91f994870d4a6ec0097fc024f0016b7a3a2024a19ea3c5613f07e1b6f3d41a7b"
+    },
+    "unique_examples": {
+      "train": 74,
+      "valid": 4
+    },
+    "unique_action_counts": {
+      "search": 23,
+      "read": 43,
+      "finish": 12
+    },
+    "unique_target_sources": {
+      "teacher_action": 71,
+      "visible_gold_train_label_correction": 7
+    },
+    "source_dataset_sha256": {
+      "train.jsonl": "8eaf5c330e9f417fc8edaa8381bb95d7b61ea5b94f78e6e3fc50bfe6daa86399",
+      "valid.jsonl": "362d52155dd82de8804a5893b7ac3207cb20cc05c3ceeb9d9b608e87005830c9"
+    },
+    "sampling": {
+      "finish_multiplier": 3,
+      "applied_to": "train only"
+    }
+  },
+  "validation_loss": [
+    {
+      "iteration": 1,
+      "loss": 1.234
+    },
+    {
+      "iteration": 20,
+      "loss": 0.409
+    },
+    {
+      "iteration": 40,
+      "loss": 0.379
+    },
+    {
+      "iteration": 60,
+      "loss": 0.344
+    },
+    {
+      "iteration": 80,
+      "loss": 0.343
+    },
+    {
+      "iteration": 100,
+      "loss": 0.321
+    },
+    {
+      "iteration": 120,
+      "loss": 0.319
+    }
+  ],
+  "training_loss": [
+    {
+      "iteration": 10,
+      "loss": 1.238
+    },
+    {
+      "iteration": 20,
+      "loss": 0.368
+    },
+    {
+      "iteration": 30,
+      "loss": 0.286
+    },
+    {
+      "iteration": 40,
+      "loss": 0.449
+    },
+    {
+      "iteration": 50,
+      "loss": 0.16
+    },
+    {
+      "iteration": 60,
+      "loss": 0.315
+    },
+    {
+      "iteration": 70,
+      "loss": 0.415
+    },
+    {
+      "iteration": 80,
+      "loss": 0.364
+    },
+    {
+      "iteration": 90,
+      "loss": 0.263
+    },
+    {
+      "iteration": 100,
+      "loss": 0.339
+    },
+    {
+      "iteration": 110,
+      "loss": 0.235
+    },
+    {
+      "iteration": 120,
+      "loss": 0.158
+    }
+  ],
+  "selected_checkpoint": {
+    "iteration": 120,
+    "rule": "fixed final iteration for this candidate, specified before its full dev50 evaluation"
+  },
+  "selection_rule": "fixed final iteration for this candidate, specified before its full dev50 evaluation",
+  "validation_timing": "MLX validates before each reported iteration (weights at iteration minus one)",
+  "wall_seconds": 225.344,
+  "versions": {
+    "mlx": "0.32.4",
+    "mlx-lm": "0.32.2",
+    "numpy": "2.4.4",
+    "transformers": "5.23.0"
+  },
+  "python": "3.12.15",
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "resources": {
+    "peak_mlx_device_bytes": 4426792628,
+    "peak_process_rss_bytes": 1300480000,
+    "note": "MLX allocation peak and process RSS overlap on unified memory; do not add them."
+  },
+  "source_git_commit": "a3916ecc77fa1e0caaa5494c4093c27312e3590e",
+  "adapter_bytes": 5281601,
+  "adapter_sha256": "d7d1454bc488246cb3b50226a9836d5d61b257aec3980221bc0476aaaf21ada8",
+  "log_sha256": "68691209e1829c9abba0b602eed11134119406c8b460a7176c009613096f18c5",
+  "config_sha256": "963b994fa38da382af84bdabdf159e15ce33a5838de7b61ccae9313a28af5748",
+  "source_sha256": {
+    "posttraining/__init__.py": "0d0bee2b2f62706f35e3fb9acf6663b4427ebadcde89e29f0e23c254bf271198",
+    "posttraining/agent.py": "de8ee94289f850959988a519e11033f1972a3e3931a9ca1738ce0c143c5e59a3",
+    "posttraining/client.py": "f2771e2320dc13d086486695d993a4718eb1e7f549e91134c11ffa98bc8715d1",
+    "posttraining/config.py": "23733841fee2c8321cc4726367fe03b186c3b506e84e97281332c37c6e58e9c8",
+    "posttraining/data.py": "04513e73134b72b4d713ead297ebdc953645343ce79d151645dc19502add650c",
+    "posttraining/delivery.py": "5396050dc17bd199e6d6741a27760e316ab365298a0ce9cd27868b98f5795276",
+    "posttraining/plot.py": "2750b453801de9d644063c86a09f2d56e699cbc3e8583ecffea6dacababa84d4",
+    "posttraining/policy.py": "71a735e391c8415cf775544009f6affeb1e2a4140422f2d978f6170fcc9596cf",
+    "posttraining/report.py": "6f2926295bc5e6c78f1d5fec1e2a5459e09226fdf195493d76350e8055937279",
+    "posttraining/tools.py": "c291b26e57a267a49dc2734a17d665fc7fadbadbb5c872f1c7a2d843222661c6",
+    "posttraining/train_worker.py": "e1a5b391ac2b80bece98c3d1c8d3607f1a4281495342c4aa0ed94c399d5e7ef9"
+  }
+}

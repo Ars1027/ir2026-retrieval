@@ -1,0 +1,8 @@
+# Optional bonus 2 on Apple Silicon. The basic-task requirements stay separate.
+-r core.txt
+numpy==2.4.4
+mlx-lm[train]==0.32.2; sys_platform == "darwin" and platform_machine == "arm64"
+mlx==0.32.4; sys_platform == "darwin" and platform_machine == "arm64"
+transformers==5.23.0
+PyYAML==6.0.3
+matplotlib==3.11.2

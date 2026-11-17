@@ -1,0 +1,10 @@
+{
+  "tensors": 224,
+  "parameters": 5275648,
+  "all_finite": true,
+  "all_tensor_names_are_lora": true,
+  "nonzero_lora_b_tensors": 112,
+  "lora_b_tensors": 112,
+  "adapter_sha256": "b2c658937b001559b837d8f5e4643729a8d4f9f38b9da1dec77d8202ada06ec8",
+  "matches_checkpoint_240": true
+}

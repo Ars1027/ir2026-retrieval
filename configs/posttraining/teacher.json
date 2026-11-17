@@ -1,0 +1,16 @@
+{
+  "method": "bonus2-qwen3-4b-teacher-bm25-v2",
+  "bm25_index_dir": "artifacts/bm25",
+  "candidate_k": 200,
+  "model": {
+    "id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "path": "models/teacher",
+    "adapter_path": null,
+    "max_input_tokens": 8192,
+    "max_output_tokens": 256,
+    "temperature": 0
+  },
+  "policy": {"max_tool_calls": 10, "max_turns": 12, "history_chars": 10000},
+  "frozen": false
+}

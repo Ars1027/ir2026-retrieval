@@ -1,0 +1,20 @@
+{
+  "method": "bonus2-qwen25-1.5b-lora-conservative-bm25-v2",
+  "bm25_index_dir": "artifacts/bm25",
+  "candidate_k": 200,
+  "model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+    "revision": "8b403126fc14f14cfc99bb4cfa72ecbc129ea677",
+    "path": "models/student",
+    "adapter_path": "artifacts/posttraining/adapter_conservative",
+    "max_input_tokens": 8192,
+    "max_output_tokens": 256,
+    "temperature": 0
+  },
+  "policy": {
+    "max_tool_calls": 10,
+    "max_turns": 12,
+    "history_chars": 10000
+  },
+  "frozen": false
+}

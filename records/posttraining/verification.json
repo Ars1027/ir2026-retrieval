@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-17",
+  "source_git_commit": "98b0305bcecc755461004ff434581652bea5b40a",
+  "unit_tests": {
+    "tests": {
+      "passed": 33,
+      "log_sha256": "0ae2adfab5b5747ede2dfee8657e55974adb2e9801c3ba0bc10972bb3848a9c5"
+    },
+    "tests/core": {
+      "passed": 49,
+      "log_sha256": "b9329964a67f0f7e9fe098578cd5b6fd940b8603608777e19dc836187d38542f"
+    },
+    "tests/pipeline": {
+      "passed": 14,
+      "log_sha256": "0015204badc5c2264f7318ef086f953096c90bcf9dc83ca4c8747ebec97f0c9c"
+    },
+    "tests/vector_backend": {
+      "passed": 12,
+      "log_sha256": "4631ffd2e8f2c4899b94f9edd07553958514affe9ba9048b6ad3c83b634b14ed"
+    },
+    "tests/posttraining": {
+      "passed": 20,
+      "log_sha256": "44ba23c44057d406b78507f4da9f324c822cf501d75fb0a5d8e2ff15ac091d8f"
+    }
+  },
+  "total_passed": 128,
+  "course_data": {
+    "valid": true,
+    "release": "IR2026-BCP-200-v1",
+    "questions": 200,
+    "documents": 10000,
+    "full_hash_check": true
+  },
+  "actual_mlx_training_smoke": {
+    "scope": "one update on fictional data; excluded from coursework results",
+    "adapter_produced": true,
+    "loss_mask_verified_against_actual_mlx_chatdataset": true,
+    "measured_resource_worker_passed": true
+  },
+  "additional_checks": {
+    "source_only_git_revision_fallback": true,
+    "wrong_split_resume_rejected_without_writes": true,
+    "public_source_contains_no_full_course_questions": true,
+    "frozen_weights_finite_and_checkpoint_match": true,
+    "official_dev_before_after_and_test_validation_errors": 0,
+    "independent_frozen_dev_replay3_exact": 3
+  }
+}

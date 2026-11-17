@@ -1,0 +1,13 @@
+{
+  "scope": "independent first3 dev query replay of frozen public adapter; not a second full dev50",
+  "queries": 3,
+  "semantic_fields": [
+    "answer",
+    "doc_ids",
+    "evidence",
+    "status"
+  ],
+  "exact_matches": 3,
+  "token_count_matches": 3,
+  "same_model_and_resources": true
+}

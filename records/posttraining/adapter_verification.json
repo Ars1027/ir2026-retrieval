@@ -1,0 +1,13 @@
+{
+  "tensors": 56,
+  "parameters": 1318912,
+  "all_finite": true,
+  "all_tensor_names_are_lora": true,
+  "nonzero_lora_b_tensors": 28,
+  "lora_b_tensors": 28,
+  "adapter_sha256": "d7d1454bc488246cb3b50226a9836d5d61b257aec3980221bc0476aaaf21ada8",
+  "matches_checkpoint_120": true,
+  "public_frozen_copy_matches": true,
+  "training_record_matches": true,
+  "frozen_record_matches": true
+}
