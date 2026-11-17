@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 from ir2026 import CorpusTools, POLICY, validate_results, write_jsonl
 from posttraining.agent import run_policy
 from posttraining.config import comparison_signature
-from posttraining.data import build_dataset, training_ids
+from posttraining.data import build_dataset, rebalance_dataset, training_ids
 from posttraining.policy import SYSTEM_PROMPT, encode, messages_for, parse_action
 from posttraining.tools import IndexedTools
 
@@ -255,6 +255,20 @@ class DataTests(unittest.TestCase):
             data, run = self.fixture(Path(tmp))
             with self.assertRaisesRegex(ValueError, "empty"):
                 build_dataset(data, run, Path(tmp) / "sft", Tokenizer(), max_tokens=1)
+
+    def test_balancing_repeats_only_train_finishes_and_keeps_valid_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data, run = self.fixture(root)
+            source, output = root / "sft", root / "balanced"
+            original = build_dataset(data, run, source, Tokenizer())
+            balanced = rebalance_dataset(source, output, finish_multiplier=3)
+            self.assertEqual(balanced["examples"], {"train": 72, "valid": 4})
+            self.assertEqual((source / "valid.jsonl").read_bytes(), (output / "valid.jsonl").read_bytes())
+            self.assertEqual(balanced["unique_examples"], original["examples"])
+            records = read_rows(output / "provenance.jsonl")
+            self.assertFalse({r["question_id"] for r in records if r["split"] == "train"} &
+                             {r["question_id"] for r in records if r["split"] == "valid"})
 
 
 def read_rows(path):

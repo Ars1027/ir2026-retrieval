@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 from ir2026 import read_jsonl  # noqa: E402
 from pipeline.settings import resolve_path  # noqa: E402
 from posttraining.config import comparison_signature, load_config  # noqa: E402
-from posttraining.data import build_dataset, sha256  # noqa: E402
+from posttraining.data import build_dataset, rebalance_dataset, sha256  # noqa: E402
 
 
 def write_json(path, value):
@@ -157,7 +157,7 @@ def train(config_path):
         raise ValueError("training did not return final measured resource usage")
     # MLX evaluates BEFORE the numbered iteration, but saves AFTER it. Do not
     # mislabel the former as the latter's score. Use the fixed final checkpoint.
-    selected = {"iteration": settings["iters"], "rule": "fixed final iteration, chosen before dev evaluation"}
+    selected = {"iteration": settings["iters"], "rule": "fixed final iteration for this candidate, specified before its full dev50 evaluation"}
     versions = {p: importlib.metadata.version(p) for p in ("mlx", "mlx-lm", "numpy", "transformers")}
     record = {"status": "completed", "training": settings, "base_model": load_config("configs/posttraining/student_before.json")["model"],
               "data": stats, "validation_loss": val, "training_loss": training_loss, "selected_checkpoint": selected,
@@ -213,6 +213,10 @@ def main():
     prepare_parser = commands.add_parser("prepare")
     prepare_parser.add_argument("--teacher-run", required=True)
     prepare_parser.add_argument("--output", default="artifacts/posttraining/data")
+    balance = commands.add_parser("rebalance")
+    balance.add_argument("--source", default="artifacts/posttraining/data")
+    balance.add_argument("--output", default="artifacts/posttraining/data_balanced")
+    balance.add_argument("--finish-multiplier", type=int, default=3)
     train_parser = commands.add_parser("train")
     train_parser.add_argument("--config", default="configs/posttraining/lora.yaml")
     run = commands.add_parser("run")
@@ -246,6 +250,10 @@ def main():
         prepare(args.teacher_run, args.output)
     elif args.action == "train":
         train(args.config)
+    elif args.action == "rebalance":
+        stats = rebalance_dataset(resolve_path(args.source), resolve_path(args.output), args.finish_multiplier)
+        write_json(ROOT / "records/posttraining/data_statistics_balanced.json", stats)
+        print(json.dumps(stats, indent=2))
     elif args.action == "run":
         run_split(args.config, args.split, args.output, args.limit)
     elif args.action == "compare":

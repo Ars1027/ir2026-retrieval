@@ -150,3 +150,47 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
                                 ("train.jsonl", "train_labels.jsonl")}}
     (out_dir / "statistics.json").write_text(json.dumps(stats, indent=2) + "\n")
     return stats
+
+
+def rebalance_dataset(source_dir, out_dir, finish_multiplier=3):
+    """Repeat terminal TRAIN samples without mixing groups or changing targets."""
+    source_dir, out_dir = Path(source_dir), Path(out_dir)
+    if type(finish_multiplier) is not int or finish_multiplier < 1:
+        raise ValueError("finish multiplier must be a positive integer")
+    if out_dir.exists() and any(out_dir.iterdir()):
+        raise ValueError("use a new/empty balanced data directory")
+    stats = json.loads((source_dir / "statistics.json").read_text())
+    for name, digest in stats["file_sha256"].items():
+        if sha256(source_dir / name) != digest:
+            raise ValueError("source SFT data digest mismatch")
+    provenance = read_jsonl(source_dir / "provenance.jsonl")
+    expanded, metadata = {}, []
+    for split in ("train", "valid"):
+        rows = read_jsonl(source_dir / f"{split}.jsonl")
+        origins = [r for r in provenance if r["split"] == split]
+        expanded[split] = []
+        for row, origin in zip(rows, origins, strict=True):
+            repeats = finish_multiplier if split == "train" and origin["action"] == "finish" else 1
+            for replica in range(repeats):
+                expanded[split].append(row)
+                metadata.append({**origin, "replica": replica})
+    train_ids = {r["question_id"] for r in metadata if r["split"] == "train"}
+    valid_ids = {r["question_id"] for r in metadata if r["split"] == "valid"}
+    if train_ids & valid_ids:
+        raise ValueError("balanced data mixed question groups")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for split, rows in expanded.items():
+        write_jsonl(out_dir / f"{split}.jsonl", rows)
+    write_jsonl(out_dir / "provenance.jsonl", metadata)
+    stats = {**stats, "unique_examples": stats["examples"],
+             "unique_action_counts": stats["action_counts"],
+             "unique_target_sources": stats["target_sources"],
+             "source_dataset_sha256": stats["file_sha256"],
+             "sampling": {"finish_multiplier": finish_multiplier, "applied_to": "train only"},
+             "examples": {split: len(rows) for split, rows in expanded.items()},
+             "action_counts": dict(Counter(r["action"] for r in metadata)),
+             "target_sources": dict(Counter(r["target_source"] for r in metadata)),
+             "supervised_tokens": sum(r["tokens"] - r["loss_start"] for r in metadata),
+             "file_sha256": {name: sha256(out_dir / name) for name in ("train.jsonl", "valid.jsonl")}}
+    (out_dir / "statistics.json").write_text(json.dumps(stats, indent=2) + "\n")
+    return stats

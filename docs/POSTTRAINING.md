@@ -20,7 +20,9 @@
 
 每条样本保存教师作出该动作前的**实际输入 messages**，追加该次教师输出。使用 [MLX-LM 的 LoRA 训练](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/LORA.md)，`mask_prompt=true`，只计算最后一条 assistant 消息的损失。此前的模型动作、错误提示和工具返回均不作为生成目标。预处理逐条检查 chat-template 前缀和实际 token 长度，超长样本过滤并统计，不静默截断监督目标。
 
-配置位于 `configs/posttraining/lora.yaml`：4-bit 基础权重冻结，后 16 层 LoRA，rank=8、scale=16、dropout=0.05，AdamW、学习率 1e-4、batch=1、240 次更新、最大序列 4096、梯度检查点、seed=2026。固定使用最后一次更新的适配器；没有根据测试反馈选择 checkpoint。MLX 的验证损失在对应编号更新**之前**计算，报告明确这一时序。
+最终候选配置位于 `configs/posttraining/lora.yaml`：4-bit 基础权重冻结，后 4 层 LoRA，rank=8、scale=8、dropout=0.05，AdamW、学习率 2e-5、batch=1、120 次更新、最大序列 4096、梯度检查点、seed=2026。训练侧将终止样本重复采样 3 次，验证侧不重复，题目分组不变；原始唯一样本与加权样本数分别统计。
+
+初始方案为后 16 层、学习率 1e-4、240 次更新，保留在 `configs/posttraining/lora.initial240.yaml`。它在开发筛查中出现重复输出，40/80 步检查点的训练集冒烟也未解决该问题。因此另训上述更保守的候选，最终按候选预先固定的迭代数取权重。初始 240 步的完整训练记录与中止筛查明确保留，不把中止运行当作完整 dev50 对照。测试集只在最终候选冻结后运行。MLX 的验证损失在对应编号更新**之前**计算，报告明确这一时序。
 
 ## 复现
 
@@ -42,6 +44,7 @@ bash run_bonus2.sh models
 bash run_bonus2.sh collect --limit 3 --output output/posttraining/teacher_smoke_new
 bash run_bonus2.sh collect --output output/posttraining/teacher_train_new
 bash run_bonus2.sh prepare --teacher-run output/posttraining/teacher_train_new
+bash run_bonus2.sh rebalance
 
 # 同一模型训练前的完整 dev50。
 bash run_bonus2.sh run --config configs/posttraining/student_before.json \
