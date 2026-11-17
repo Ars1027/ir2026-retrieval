@@ -142,7 +142,7 @@ def train(config_path):
     adapter.mkdir(parents=True, exist_ok=True)
     log = adapter / "training.log"
     started = time.monotonic()
-    command([sys.executable, "-u", "-m", "mlx_lm", "lora", "--config", str(config_path)], log=log)
+    command([sys.executable, "-u", "-m", "posttraining.train_worker", "--config", str(config_path)], log=log)
     if not (adapter / "adapters.safetensors").is_file():
         raise ValueError("training did not produce an adapter")
     log_text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log.read_text())
@@ -152,6 +152,9 @@ def train(config_path):
                      re.findall(r"^\s*(\d+)\s+([0-9.]+)\s+[▼▲]", log_text, re.MULTILINE)]
     if not val or not training_loss or training_loss[-1]["iteration"] != settings["iters"]:
         raise ValueError("cannot verify completed training iterations/losses from the MLX log")
+    resource_lines = re.findall(r"^IR2026_RESOURCE_USAGE (.+)$", log_text, re.MULTILINE)
+    if not resource_lines:
+        raise ValueError("training did not return final measured resource usage")
     # MLX evaluates BEFORE the numbered iteration, but saves AFTER it. Do not
     # mislabel the former as the latter's score. Use the fixed final checkpoint.
     selected = {"iteration": settings["iters"], "rule": "fixed final iteration, chosen before dev evaluation"}
@@ -162,6 +165,7 @@ def train(config_path):
               "validation_timing": "MLX validates before each reported iteration (weights at iteration minus one)",
               "wall_seconds": round(time.monotonic() - started, 3), "versions": versions,
               "python": platform.python_version(), "platform": platform.platform(),
+              "resources": json.loads(resource_lines[-1]),
               "source_git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
               "adapter_bytes": (adapter / "adapters.safetensors").stat().st_size,
               "adapter_sha256": sha256(adapter / "adapters.safetensors"),
