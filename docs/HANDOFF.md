@@ -1,52 +1,53 @@
-# 附加题交接
+# 项目交接
 
-## 基础阶段交付
+基础检索和附加题二已完成，实验分别见[基础结果](RESULTS.md)与[后训练结果](POSTTRAINING_RESULTS.md)。附加题一继续从当前 BM25 / 混合检索对照开展新方法与消融。
 
-默认入口 `agent/solution.py` 读取 `configs/final.json`，执行固定检索流程：BM25 召回 → 片段聚合 → BGE-M3 向量召回 → 文档级 RRF → 原文证据 → 抽取式答案。`agent/bm25_solution.py` 保留独立 BM25 对照。
+## 入口与模块
 
 | 职责 | 代码与配置 |
 | --- | --- |
+| 冻结基础方法 | `agent/solution.py`、`configs/final.json` |
+| BM25 对照 | `agent/bm25_solution.py`、`configs/bm25.json` |
 | 原文、切块、ID 与字符跨度 | `retrieval/corpus_adapter.py`、`chunking.py`、`contracts.py` |
-| BM25 与文档聚合 | `retrieval/bm25.py`、`document_rank.py`、`configs/bm25.json` |
-| API 编码、FAISS、RRF | `vector_backend/ada.py`、`scripts/build_vector.py`、`configs/vector.bge.json` |
-| 向量插件契约与流水线 | `retrieval/interfaces.py`、`pipeline/vector_stage.py` |
-| 引用、答案、公共结果组装 | `pipeline/evidence.py`、`answer.py`、`model_client.py`、`result_builder.py` |
-| 配置与运行 | `pipeline/settings.py`、`scripts/run_baseline.py`、`run.ps1`、`run.sh` |
-| 检查、评测、汇总 | `check_results.py`、`evaluate.py`、`scripts/summarize_runs.py` |
+| BM25 与文档聚合 | `retrieval/bm25.py`、`document_rank.py` |
+| API 编码、FAISS、RRF | `vector_backend/ada.py`、`scripts/build_vector.py`、`pipeline/vector_stage.py` |
+| 引用、答案与结果组装 | `pipeline/evidence.py`、`answer.py`、`model_client.py`、`result_builder.py` |
+| 基础运行与配置 | `pipeline/settings.py`、`scripts/run_baseline.py`、`run.ps1`、`run.sh` |
+| 后训练 Agent | `agent/posttrained_solution.py`、`posttraining/`、`configs/posttraining/` |
+| 后训练采集、训练与评测 | `scripts/posttrain.py`、`run_bonus2.sh` |
+| 官方检查与评测 | `check_results.py`、`evaluate.py`、`scripts/summarize_runs.py` |
 
-`vector_backend/ada.py` 是沿用的文件名，实际模型由配置决定。当前使用 BGE-M3；ada-002 的部分构建记录作为历史记录保留，使用独立索引目录。
+`vector_backend/ada.py` 沿用旧文件名，实际模型由配置决定，当前冻结方法使用 BGE-M3。
 
 ## 附加题一：检索方法改进
 
-当前向量检索与融合已是基础交付的一部分。附加题从当前 BM25 和混合检索两套完整 dev50 结果出发，选择新的检索、重排、查询改写或多轮 Agent 方法，安排对照与消融。
+当前混合检索 dev Hit@10=0.44、Hit@1=0.16，抽取式答案 AnswerEM=0。可从检索、重排、查询改写或多轮 Agent 中选择改进方向，并与已有完整 dev50 对照。
 
-- 新增方法配置，从 `configs/vector.bge.json` 复制参数，设置新的方法名、索引目录和输出目录。
-- 向量后端实现 `retrieval.interfaces.VectorRetriever`；文档融合实现 `DocumentFusion`，通过 `module:factory` 配置加载。详细字段见[接口指南](../VECTOR_PLUGIN_GUIDE.md)。
-- 固定流程使用 `retrieval` 日志；模型自主选择工具时使用 `agent` 和 `model_tool` 日志。当前统一入口固定为 retrieval，Agent 方法可通过课程 `run.py --method-type agent --model-label <实际模型>` 运行新的适配器。
-- 先 train 冒烟，再完整 dev50，报告 Hit@1/5/10、EvidenceRecall@10、AnswerEM、耗时、token 与失败分布。
+- 为新方法单独保存配置和输出，保留 `configs/final.json` 作为基础对照。
+- 向量检索器实现 `retrieval.interfaces.VectorRetriever`，融合方法实现 `DocumentFusion`，通过 `module:factory` 加载，见[向量接口](../VECTOR_PLUGIN_GUIDE.md)。
+- 固定流程使用 `retrieval` 日志；模型自主选择工具时使用 `agent` 与 `model_tool`，通过 `run.py --method-type agent --model-label <实际模型>` 运行。
+- 先在 train 冒烟，再评测完整 dev50，报告检索指标、答案、耗时、token 和失败分布。参数冻结后运行 test50。
 
-当前可改进的问题：混合检索 Hit@10 提升到 0.44，但 Hit@1 降至 0.16；抽取式答案 AnswerEM 为 0。模型答案客户端已实现，示例配置在 `configs/model.example.json`，生成式答案尚无本项目正式实验结果。
+生成式答案客户端和 `configs/model.example.json` 可复用，尚无该方案的正式实验结果。
 
 ## 附加题二：小模型后训练
 
-已实现 train100 教师轨迹采集、按题目分组的数据处理、只监督最后一步模型动作/答案的本地 LoRA、同一学生的完整 dev50 对照、冻结 test50 与适配器交付。统一入口为 `bash run_bonus2.sh`，方法入口为 `agent.posttrained_solution`，与基础固定检索入口分开配置。
+已完成 train100 教师轨迹采集、按题分组的数据处理、助手动作监督 LoRA、完整 dev50 对照和冻结 test50。运行环境为 macOS arm64；采集与训练命令见[后训练复现](POSTTRAINING.md)，冻结权重在 [`weights/posttraining/`](../weights/posttraining/)。
 
-教师为固定版本的本地 Qwen3-4B，学生为 Qwen2.5-1.5B；最终后 4 层 LoRA、rank=8、120 次更新。dev Hit@10 从 0.04 到 0.22，平均耗时从 7.91 秒到 20.32 秒；test50 检查零错误，23 条 `ok`、27 条预算失败，均保留。数据处理明示区分教师原始动作与可见原文支持的训练标签答案校正。
+## 数据与产物交接
 
-实现与命令见 [后训练说明](POSTTRAINING.md)，完整指标、成本、失败案例和结论边界见 [后训练结果](POSTTRAINING_RESULTS.md)。公开冻结权重位于 `weights/posttraining/`，原始 QA/轨迹和四个完整案例仅在课程内部交付。
+| 内容 | 路径 / 获取方式 |
+| --- | --- |
+| 课程语料、问题与标签 | `corpus/`、`datas/`，从课程渠道获取 |
+| 切块与 BM25 索引 | `artifacts/chunks/`、`artifacts/bm25/`，按 README 重建 |
+| BGE-M3 索引与缓存 | `artifacts/bge_m3/`，API 重建或课程内部传递 |
+| 基础 dev50 | `output/hybrid/bge_hybrid_dev_20261103/` |
+| 基础最终 test50 | `output/hybrid/test_base_final/` |
+| 后训练教师、dev/test、训练样本与日志 | 由附加题二成员的课程交付包提供，目录见[后训练复现](POSTTRAINING.md#文件与交付) |
+| 聚合实验记录 | Git 中的 `records/bm25/`、`records/hybrid/`、`records/posttraining/` |
+| 冻结 LoRA 适配器 | Git 中的 `weights/posttraining/` |
+| API 密钥 | 自行设置环境变量 `OPENROUTER_API_KEY` |
 
-训练问题和标签用于训练/筛选，dev 用于选择参数；test 在方法冻结后运行。原文、QA、引用和逐题轨迹按 [DATA_USE.md](../DATA_USE.md) 在课程内部流转。
+最终课程压缩包包含源码、依赖、配置、运行入口、实验报告，以及完整 test50 的 `results.jsonl`、`run_info.json` 和 `traces/`。附加题二另附数据处理和训练脚本、训练配置、数据统计与适配器；其内部交付包还保存训练样本、教师轨迹、dev 对照和完整案例。语料、标签、基础模型和缓存不重复打包。
 
-## 共同接口与验收
-
-- `solve(question, tools, config)` 接收问题，返回答案、排序文档、证据、状态和 usage。
-- `doc_id` 使用课程原始字符串；`start/end` 是 `Corpus.text(doc_id)` 的 Python 字符位置。引用直接取连续原文切片。
-- 每题 600 秒，最多 10 篇文档、5 段引用，每段 20–1200 字符。模型工具最多 32 次，每次观测最多 12,000 字符。
-- token 来自实际 API usage 或本地生成器计数，未知值使用 `null`。失败题保留在完整评测中。
-- 新方法先完成完整 dev、官方检查和独立复跑，再保存冻结配置与最终 test 输出。基础配置 `configs/final.json` 用作固定对照，新方法使用单独配置。
-
-课程的两道选做各最高 10 分：检索改进包括方案实现、对照消融与分析；后训练包括数据、实际训练和训练前后评测。具体评分见 [SPEC.md](../SPEC.md)。
-
-## 接手时需要的文件
-
-Git 包含代码、配置、依赖、合成测试和聚合实验记录。课程数据从课程渠道获取；索引可按 README 重建；已有逐题结果由当前工作区交接。具体路径和远程核对结果见[文件清单](REPOSITORY_STATUS.md)。
+文档 ID、字符跨度、日志和预算遵循 [SPEC.md](../SPEC.md)。完整问答、原文和逐题轨迹按 [DATA_USE.md](../DATA_USE.md) 在课程内部流转。

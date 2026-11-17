@@ -1,34 +1,28 @@
-# 附加题 2：教师轨迹与小模型 LoRA
+# 附加题二：教师轨迹与小模型 LoRA
 
-本目录实现题目第 16 页的后训练流程：仅在课程 train100 采集教师交互轨迹，以历史观测为输入，监督下一步模型动作或答案；同一学生模型在同一检索流程下比较训练前后。实验结果及适配器校验值见 `records/posttraining/`；冻结适配器放在 `weights/posttraining/`，逐题数据和训练样本保留在本地课程交付包中。
+从 train100 采集教师交互轨迹，以历史观测预测下一步动作或答案，再比较同一学生训练前后的完整 dev50。实验指标、案例和训练配置见[后训练结果](POSTTRAINING_RESULTS.md)，冻结适配器在 [`weights/posttraining/`](../weights/posttraining/)。
 
-## 方法
+## 方法与训练数据
 
-教师使用 [Qwen3-4B-Instruct-2507 的 MLX 4-bit 版本](https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit)，学生使用 [Qwen2.5-1.5B-Instruct 的 MLX 4-bit 版本](https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit)。[原始学生模型](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct)为 1.54B 参数。两个下载版本固定在各自配置的 commit SHA，`models/*/provenance.json` 保存文件摘要。所有轨迹采集、训练和推理都在本机进行。
+教师为 [Qwen3-4B-Instruct-2507 MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit)，学生为 [Qwen2.5-1.5B-Instruct MLX 4-bit](https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit)，原始学生为 1.54B 参数。两者在配置中固定 revision，下载文件摘要保存在 `models/*/provenance.json`。
 
-教师、未训练学生和训练后学生共用 `posttraining/agent.py`。模型每轮输出一条 JSON 动作：`search`、`read` 或 `finish`。搜索复用原项目的 BM25 切块索引，每次给模型最多 8 篇文档的片段；读取只能打开已观察的文档，每次最多 1,000 字符。模型决定下一次搜索词、读取位置、终止时机、文档排序和短答案。最终引用直接复制实际返回给模型的原文片段，不让模型重写引用。
+教师与训练前后学生共用 `posttraining/agent.py`，每轮输出一条 JSON 动作：`search`、`read` 或 `finish`。搜索返回最多 8 篇文档的 BM25 片段；读取限于已观察文档，每次最多 1,000 字符；模型决定查询词、读取位置、终止、排名和短答案。引用复制实际观测的原文片段。
 
-统一使用 greedy 解码、10 次工具调用、12 个模型回合、每次生成最多 256 tokens，且保留课程的 600 秒硬超时。搜索和读取是实际 `model_tool` 事件；格式错误计入模型调用和 token，不伪造一次工具调用。达到预算或发生错误时，保留最新实际检索排名及原文引用，并保留相应失败状态。`fallback_ranking` 单独记录这种情况。
+统一采用 greedy 解码、10 次工具调用、12 个模型回合、每次最多生成 256 tokens，以及课程的 600 秒硬超时。搜索与读取记录为 `model_tool`；格式错误计入模型调用和 token。预算失败或错误保留最新检索排名、引用和失败状态，并记录 `fallback_ranking`。
 
-## 训练数据与损失
+`collect` 只采集 train100。离线预处理保留 `ok` 且命中 gold 文档的轨迹；终止样本还要求标准答案能在当前可见的 gold 原文中按词边界逐字核验。搜索和读取目标沿用教师输出；错误终止答案可用训练标签校正，来源记为 `visible_gold_train_label_correction`。原始决策保留，推理模块读取题目、语料和索引。
 
-`collect` 的划分固定为 train，没有 dev/test 采集选项。推理模块只读取题目、语料和索引，不加载标签。离线预处理阶段才读取 train 标签，过滤非 `ok` 或没有命中 gold 文档的整条轨迹。搜索/读取动作使用真实教师输出；最终答案监督额外要求标准答案能在该回合**模型可见的 gold 文档原文**中按词边界逐字核验。教师答错时，明确标记为训练标签校正，并保留原始教师输出摘要和原始决策；缺少可见原文支持的终止样本不进入训练。
+按 seed=2026 的题目哈希排序，先划出 10% 内部验证，再过滤并展开步骤。同一道题的所有步骤属于同一划分。dev 用于选参数，test 在冻结后运行。
 
-因此本方法是教师动作蒸馏与有原文支持的训练答案监督的组合，不将标签校正声称为教师原答。校正数量、目标来源和剔除原因单独统计；不改写已发生的工具轨迹，不给推理进程提供标签。所有被过滤轨迹仍保存在原始采集目录中，并计入教师完整训练集评测。
+训练样本保存动作前的实际 messages，并追加目标助手输出。使用 [MLX-LM LoRA](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/LORA.md) 的 `mask_prompt=true`，仅对最后一条助手消息计算损失，历史动作和工具返回只作输入。预处理检查模板前缀和 token 长度，超长样本过滤并统计。
 
-原始训练题按固定种子 2026 的哈希排序，先按题划出 10% 作为内部验证，再过滤、展开成逐步样本。同一道题的不同回合不会分散到训练和内部验证两侧。课程 dev 用于开发筛查和完整对照评测；test 只在方法冻结后运行，不参与训练、筛选或调参。
-
-每条样本保存教师作出该动作前的**实际输入 messages**，追加该次教师输出。使用 [MLX-LM 的 LoRA 训练](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/LORA.md)，`mask_prompt=true`，只计算最后一条 assistant 消息的损失。此前的模型动作、错误提示和工具返回均不作为生成目标。预处理逐条检查 chat-template 前缀和实际 token 长度，超长样本过滤并统计，不静默截断监督目标。
-
-最终候选配置位于 `configs/posttraining/lora.yaml`：4-bit 基础权重冻结，后 4 层 LoRA，rank=8、scale=8、dropout=0.05，AdamW、学习率 2e-5、batch=1、120 次更新、最大序列 4096、梯度检查点、seed=2026。训练侧将终止样本重复采样 3 次，验证侧不重复，题目分组不变；原始唯一样本与加权样本数分别统计。
-
-初始方案为后 16 层、学习率 1e-4、240 次更新，保留在 `configs/posttraining/lora.initial240.yaml`。它在开发筛查中出现重复输出，40/80 步检查点的训练集冒烟也未解决该问题。因此另训上述更保守的候选，最终按候选预先固定的迭代数取权重。初始 240 步的完整训练记录与中止筛查明确保留，不把中止运行当作完整 dev50 对照。测试集只在最终候选冻结后运行。MLX 的验证损失在对应编号更新**之前**计算，报告明确这一时序。
+最终配置为 `configs/posttraining/lora.yaml`：冻结 4-bit 基座，后 4 层 LoRA，rank=8、scale=8、dropout=0.05，AdamW、学习率 2e-5、batch=1、120 次更新、最大序列 4096、梯度检查点、seed=2026。终止样本仅在训练侧重复采样 3 次。初始 240 步方案及其筛查结果见[实验结果](POSTTRAINING_RESULTS.md#数据与实际训练)。MLX 验证损失在对应编号更新之前计算。
 
 ## 复现
 
-已验证环境为 Apple Silicon、32 GB 统一内存、Python 3.12。此可选训练后端面向 macOS arm64；基础任务的依赖和配置独立保留。
+环境为 **Apple Silicon、macOS arm64、Python 3.12**，实验机器有 32 GB 统一内存。把课程 `corpus/`、`datas/` 放在项目根目录或建立符号链接；命令从项目根目录执行，输出目录使用新名称。
 
-把课程包中的 `corpus/`、`datas/` 放在项目根目录，也可以建立指向课程数据的本地符号链接。所有命令从项目根目录执行，输出目录须使用新名称。
+下面从采集重建完整实验。直接加载公开冻结权重的命令见 [README](../README.md#附加题二小模型-lora)。
 
 ```bash
 uv venv .venv --python 3.12
@@ -62,9 +56,11 @@ bash run_bonus2.sh run --config configs/posttraining/student_frozen.json \
   --split test --output output/posttraining/student_test_new
 ```
 
-`run` 调用原课程 `run.py`，每题独立子进程运行并由父进程执行硬超时。模型每题加载时间包含在单题耗时中。每次运行自动执行 `check_results.py`；train/dev 还执行 `evaluate.py`。完整划分使用 `--submission` 检查。test 配置必须包含已训练适配器的冻结摘要，适配器变化会拒绝运行。
+`run` 调用课程 `run.py`，每题使用独立子进程，加载模型计入单题耗时。运行后自动检查结果，train/dev 还执行评测；完整划分使用 `--submission`。test 要求冻结配置及匹配的适配器摘要。
 
-外部暂停后，可用 `run --resume` 接续原目录。续跑复用课程的同一 worker 和超时处理，先核对官方问题序列、已完成结果、模型/适配器标识，以及提示词、索引和基座权重摘要。已完成的失败题也会保留；没有最终结果的中断题目才会重新运行，其旧决策/观测另存到 `interrupted_attempts/`。早期未持久化资源摘要的运行须提供条件匹配的完整对照记录，例如：
+### 中断续跑
+
+当前运行器在整批结束后写入资源摘要；中断运行使用 `--resume` 时，需通过 `--resource-reference` 提供条件匹配的完整运行记录：
 
 ```bash
 bash run_bonus2.sh run --config configs/posttraining/student_after.json \
@@ -72,29 +68,41 @@ bash run_bonus2.sh run --config configs/posttraining/student_after.json \
   --resource-reference output/posttraining/student_before_dev_v2/run_info.json
 ```
 
-`resume_history.jsonl` 保存接续前结果摘要、原样保留数量和中断文件位置。单题耗时不含用户暂停时间；被中断尝试的额外计算留在单独日志中，不混入完整尝试的单题耗时。
+续跑核对问题序列、已完成结果、模型、配置及资源摘要。已完成的失败题保留，只重跑尚无结果的题目；中断尝试的决策和观测存入 `interrupted_attempts/`，接续记录写入 `resume_history.jsonl`。单题耗时不含暂停和中断尝试的额外计算。
 
-对照汇总不仅比较配置，还核对实际提示词、BM25 文件和基础权重摘要。必须完整覆盖 dev50，失败也留在分母中；报告 Hit@1/5/10、EvidenceRecall@10、AnswerEM、状态、耗时、模型调用、工具调用与 token。token 统计来自实际本地生成器；中断或失败生成无法取得完整统计时使用 `null`。本地推理的 API 调用费用为 0，电费未计量。
+对照汇总核对配置、提示词、BM25 文件和基础权重摘要，报告全部 dev50 的指标、状态、成本和行为统计。token 来自本地生成器，包含重复历史；生成中断导致用量未知时记为 `null`。本地模型 API 费用为 0，电费未计量。
 
 ```bash
 .venv/bin/python -m unittest discover -s tests/posttraining -v
 ```
 
-## 文件与交付边界
+## 文件与交付
 
 | 内容 | 路径 |
 | --- | --- |
-| 教师/学生/训练配置 | `configs/posttraining/` |
-| 采集、预处理、训练、运行、汇总统一入口 | `scripts/posttrain.py`、`run_bonus2.sh` |
-| 动作协议、实际观测和推理 | `posttraining/policy.py`、`tools.py`、`agent.py` |
-| 完整轨迹和教师逐步决策 | `output/posttraining/teacher_train/` |
-| 唯一 SFT 样本、来源和数据统计 | `artifacts/posttraining/data/` |
-| 最终训练采样数据 | `artifacts/posttraining/data_balanced/` |
-| 最终 LoRA 权重、配置和训练日志 | `artifacts/posttraining/adapter_conservative/` |
-| 初始 240 步方案的训练产物 | `artifacts/posttraining/adapter/` |
-| 可直接检查和加载的冻结适配器 | `weights/posttraining/` |
-| 训练前后完整 dev 输出 | `output/posttraining/student_before_dev_v2/`、`output/posttraining/student_after_dev_final/` |
-| 冻结 test50 输出 | `output/posttraining/student_test_final/` |
-| 公开的聚合记录 | `records/posttraining/` |
+| 教师、学生、训练配置 | `configs/posttraining/` |
+| 采集、预处理、训练、评测与打包入口 | `scripts/posttrain.py`、`run_bonus2.sh` |
+| 教师完整轨迹和逐步决策 | `output/posttraining/teacher_train/` |
+| 唯一 SFT 样本与来源 | `artifacts/posttraining/data/` |
+| 采样后的训练数据 | `artifacts/posttraining/data_balanced/` |
+| 最终训练权重、日志和摘要 | `artifacts/posttraining/adapter_conservative/` |
+| 初始 240 步训练产物 | `artifacts/posttraining/adapter/` |
+| 公开冻结适配器与加载配置 | `weights/posttraining/` |
+| 训练前后完整 dev50 | `output/posttraining/student_before_dev_v2/`、`output/posttraining/student_after_dev_final/` |
+| 冻结 test50 | `output/posttraining/student_test_final/` |
+| 聚合记录、训练曲线 | `records/posttraining/` |
 
-遵循 [DATA_USE.md](../DATA_USE.md)，公开 PR 包含代码、配置、合成测试、聚合结果和冻结 LoRA 适配器；不公开反混淆问答、文档原文、逐题决策或搜索轨迹。本地课程交付包另含数据统计、完整验证/测试结果与日志、训练数据和带案例的报告；不重复打包课程语料、标签、基础模型或缓存。
+上述完整实验产物由成员的课程交付包提供，本地重新运行时以所选输出目录为准。按 [DATA_USE.md](../DATA_USE.md)，代码、配置、合成测试、聚合记录和适配器公开；完整问答、训练样本、原文和逐题轨迹在课程内部流转。
+
+在原始训练产物和各次完整运行目录齐备时，可生成内部交付包及含四个完整案例的 `BONUS2_REPORT.md`：
+
+```bash
+bash run_bonus2.sh package \
+  --before output/posttraining/student_before_dev_v2 \
+  --after output/posttraining/student_after_dev_final \
+  --test output/posttraining/student_test_final \
+  --teacher output/posttraining/teacher_train \
+  --output output/posttraining/bonus2_delivery.zip
+```
+
+交付包包含源码、冻结适配器、训练样本与日志、完整运行结果及报告。课程语料、标签、基础模型和缓存另行准备。
