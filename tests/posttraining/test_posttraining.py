@@ -180,7 +180,8 @@ class DataTests(unittest.TestCase):
                  "output": encode({"action": "search", "query": "fictional archive"})},
                 {"turn": 1, "action_valid": True, "messages": messages_for(q["question"], [[
                     {"role": "assistant", "content": encode({"action": "search", "query": "fictional archive"})},
-                    {"role": "user", "content": "TOOL_RESULT Fictional archive: Mara Venn was the curator."}]]),
+                    {"role": "user", "content": "TOOL_RESULT " + encode({"passages": [
+                        {"doc_id": "fiction-1", "text": "Mara Venn was the curator of the fictional archive."}]})}]]),
                  "output": encode({"action": "finish", "doc_ids": ["fiction-1"], "answer": "Mara Venn"})}])
         return data, run
 
@@ -212,6 +213,33 @@ class DataTests(unittest.TestCase):
             write_jsonl(run / "results.jsonl", [])
             with self.assertRaisesRegex(ValueError, "complete"):
                 build_dataset(data, run, Path(tmp) / "sft", Tokenizer())
+
+    def test_wrong_teacher_answer_is_corrected_only_with_visible_gold_support(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data, run = self.fixture(Path(tmp))
+            for path in (run / "decisions").glob("*.jsonl"):
+                rows = read_rows(path)
+                rows[-1]["output"] = encode({"action": "finish", "doc_ids": ["fiction-1"], "answer": "Wrong curator"})
+                write_jsonl(path, rows)
+            stats = build_dataset(data, run, Path(tmp) / "sft", Tokenizer())
+            self.assertEqual(stats["target_sources"]["visible_gold_train_label_correction"], 20)
+            for sample in read_rows(Path(tmp) / "sft/train.jsonl"):
+                if parse_action(sample["messages"][-1]["content"])["action"] == "finish":
+                    self.assertEqual(parse_action(sample["messages"][-1]["content"])["answer"], "Mara Venn")
+            original = read_rows(next((run / "decisions").glob("*.jsonl")))
+            self.assertEqual(parse_action(original[-1]["output"])["answer"], "Wrong curator")
+
+    def test_unsupported_finish_is_dropped_while_real_search_actions_remain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data, run = self.fixture(Path(tmp))
+            for path in (run / "decisions").glob("*.jsonl"):
+                rows = read_rows(path)
+                rows[-1]["messages"][-1]["content"] = "TOOL_RESULT " + encode({"passages": [
+                    {"doc_id": "fiction-1", "text": "This passage has no curator name."}]})
+                write_jsonl(path, rows)
+            stats = build_dataset(data, run, Path(tmp) / "sft", Tokenizer())
+            self.assertEqual(stats["action_counts"], {"search": 20})
+            self.assertEqual(stats["filtered"]["finish_without_visible_gold_answer"], 20)
 
     def test_preprocessing_never_requires_dev_or_test_files(self):
         with tempfile.TemporaryDirectory() as tmp:

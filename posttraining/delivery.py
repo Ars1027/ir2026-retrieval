@@ -56,6 +56,7 @@ def make_delivery(root, before, after, test, teacher, output):
              "## 数据与实际训练", "",
              f"教师为本地 Qwen3-4B-Instruct-2507（4-bit），学生为本地 Qwen2.5-1.5B-Instruct（4-bit）。只从 train100 采集教师轨迹。",
              f"质量筛选后，训练/内部验证题数为 {training['data']['accepted_questions']}，逐步样本数为 {training['data']['examples']}。",
+             f"监督来源统计：{training['data']['target_sources']}。最终答案只在当前输入的 gold 原文可逐字核验时保留；必要时明确使用训练标签校正，原始教师输出保留在决策文件。",
              f"实际完成 {training['selected_checkpoint']['iteration']} 次更新，耗时 {training['wall_seconds']:.1f} 秒。LoRA 参数与软件版本见 training_summary.json。",
              f"适配器大小 {training['adapter_bytes']} bytes；SHA256 `{training['adapter_sha256']}`。", "",
              "以历史观测预测下一步动作和答案；只对最后一条 assistant 消息计算损失，工具返回和历史动作全部屏蔽。按原始训练题划分内部验证，不使用课程 dev/test 题训练或筛选教师轨迹。", "",
@@ -96,7 +97,7 @@ def make_delivery(root, before, after, test, teacher, output):
     lines += ["", "## 冻结 test50 与限制", "",
               f"最终 test 完整覆盖 {test_summary['queries']} 题，检查错误数为 {test_summary['validation_errors']}，状态分布为 {test_summary['status_counts']}。",
               "测试标签由教师持有，本地不计算测试命中率或正确率；测试前冻结适配器 SHA256，不据测试结果调参。",
-              "本实验只有 100 道原始训练题、一个训练种子和一套小模型；训练步骤多于独立监督题数，存在过拟合风险。教师 GoldHit 过滤仅验证文档命中，无法保证每条教师答案都语义正确。引用检查仅证明原文连续匹配。", ""]
+              "本实验只有 100 道原始训练题、一个训练种子和一套小模型；训练步骤多于独立监督题数，存在过拟合风险。GoldHit 过滤仅验证文档命中，最终答案监督另做可见原文校验和训练标签校正。原文包含答案也不自动证明模型验证了所有问题条件；引用检查仅证明连续匹配。", ""]
     report = after.parent / "BONUS2_REPORT.md"
     report.write_text("\n".join(lines), encoding="utf-8")
     output.parent.mkdir(parents=True, exist_ok=True)

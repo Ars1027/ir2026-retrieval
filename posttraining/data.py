@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
 from ir2026 import keyed, load_questions, normalize_answer, read_jsonl, write_jsonl
-from posttraining.policy import SYSTEM_PROMPT, messages_for, parse_action
+from posttraining.policy import SYSTEM_PROMPT, encode, messages_for, parse_action
 
 
 def sha256(path):
@@ -33,6 +34,29 @@ def training_ids(data_dir):
     return keyed(questions, "train")
 
 
+def visible_gold_answer(messages, label, final_doc_ids):
+    """Conservatively require the train answer in an actual visible gold passage.
+
+    Initial questions, action strings, IDs and error messages cannot establish
+    support. Only text fields inside real TOOL_RESULT observations qualify.
+    """
+    answer = normalize_answer(label["answer"])
+    if not answer:
+        return False
+    pattern = re.compile(r"(?<!\w)" + re.escape(answer) + r"(?!\w)")
+    gold = set(label["gold_doc_ids"]) & set(final_doc_ids)
+    for message in messages:
+        content = message.get("content", "")
+        if message.get("role") != "user" or not content.startswith("TOOL_RESULT "):
+            continue
+        observation = json.loads(content[len("TOOL_RESULT "):])
+        passages = observation.get("passages", [observation])
+        for passage in passages:
+            if passage.get("doc_id") in gold and pattern.search(normalize_answer(passage.get("text", ""))):
+                return True
+    return False
+
+
 def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2026):
     data_dir, run_dir, out_dir = map(Path, (data_dir, run_dir, out_dir))
     if out_dir.exists() and any(out_dir.iterdir()):
@@ -50,7 +74,7 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
     n_valid = max(1, len(ordered) // 10)
     valid_ids = set(ordered[:n_valid])
     examples = {"train": [], "valid": []}
-    provenance, reasons, actions = [], Counter(), Counter()
+    provenance, reasons, actions, target_sources = [], Counter(), Counter(), Counter()
     accepted_questions, lengths, supervised = Counter(), [], []
     for qid in ordered:
         result = results[qid]
@@ -74,7 +98,17 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
                     or messages[1] != messages_for(train[qid]["question"], [])[1]
                     or messages[-1]["role"] != "user"):
                 raise ValueError("trajectory prompt differs from the runtime policy")
-            full = messages + [{"role": "assistant", "content": decision["output"]}]
+            target, source = decision["output"], "teacher_action"
+            if action["action"] == "finish":
+                if len(label["answer"]) > 200 or not visible_gold_answer(messages, label, action["doc_ids"]):
+                    reasons["finish_without_visible_gold_answer"] += 1
+                    continue
+                if normalize_answer(action["answer"]) != normalize_answer(label["answer"]):
+                    # A separate, explicitly labelled train supervision source.
+                    # Never rewrite the original teacher decisions or tool trace.
+                    target = encode({**action, "answer": label["answer"]})
+                    source = "visible_gold_train_label_correction"
+            full = messages + [{"role": "assistant", "content": target}]
             tokens = tokenizer.apply_chat_template(full, tokenize=True, add_generation_prompt=False)
             prefix = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
             if tokens[:len(prefix)] != prefix or len(tokens) <= len(prefix):
@@ -85,10 +119,12 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
             examples[split].append({"messages": full})
             provenance.append({"split": split, "question_id": qid, "turn": decision["turn"],
                                "tokens": len(tokens), "loss_start": len(prefix),
-                               "action": action["action"]})
+                               "action": action["action"], "target_source": source,
+                               "original_teacher_output_sha256": hashlib.sha256(decision["output"].encode()).hexdigest()})
             lengths.append(len(tokens))
             supervised.append(len(tokens) - len(prefix))
             actions[action["action"]] += 1
+            target_sources[source] += 1
             count += 1
         if count:
             accepted_questions[split] += 1
@@ -103,9 +139,10 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
              "accepted_questions": dict(accepted_questions),
              "examples": {k: len(v) for k, v in examples.items()},
              "action_counts": dict(actions), "filtered": dict(reasons),
+             "target_sources": dict(target_sources),
              "max_sequence_tokens": max(lengths), "supervised_tokens": sum(supervised),
              "mask_prompt": True, "tool_observations_are_targets": False,
-             "quality_filter": "status=ok and train GoldHit@10=1; this does not verify semantic answer correctness",
+             "quality_filter": "trajectory status=ok and train GoldHit@10=1; finish requires the train answer in a visible final gold passage; wrong final answers are explicitly corrected from train labels",
              "file_sha256": {name: sha256(out_dir / name) for name in ("train.jsonl", "valid.jsonl")},
              "source_sha256": {name: sha256(data_dir / name) for name in
                                 ("train.jsonl", "train_labels.jsonl")}}
