@@ -109,8 +109,10 @@ def build_dataset(data_dir, run_dir, out_dir, tokenizer, max_tokens=4096, seed=2
                     target = encode({**action, "answer": label["answer"]})
                     source = "visible_gold_train_label_correction"
             full = messages + [{"role": "assistant", "content": target}]
-            tokens = tokenizer.apply_chat_template(full, tokenize=True, add_generation_prompt=False)
-            prefix = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
+            tokens = tokenizer.apply_chat_template(full, tokenize=True, add_generation_prompt=False,
+                                                    return_dict=False)
+            prefix = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True,
+                                                    return_dict=False)
             if tokens[:len(prefix)] != prefix or len(tokens) <= len(prefix):
                 raise ValueError("chat template does not support exact assistant-only loss masking")
             if len(tokens) > max_tokens:

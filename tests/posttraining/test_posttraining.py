@@ -50,7 +50,7 @@ class Client:
 
 class Tokenizer:
     """Prefix-preserving fictional chat template, used without model dependencies."""
-    def apply_chat_template(self, messages, tokenize=True, add_generation_prompt=False):
+    def apply_chat_template(self, messages, tokenize=True, add_generation_prompt=False, return_dict=False):
         text = "".join(f"<{m['role']}>" + m["content"] + "</turn>" for m in messages)
         if add_generation_prompt:
             text += "<assistant>"
