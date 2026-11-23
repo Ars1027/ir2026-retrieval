@@ -1,0 +1,32 @@
+{
+  "queries": 50,
+  "candidate_pool_agrees": true,
+  "passage_scores_agree": true,
+  "queries_with_gold_in_candidate_pool": 32,
+  "queries_with_gold_outside_pool": 18,
+  "queries_with_candidate_gold_outside_top_10": {
+    "baseline": 12,
+    "fusion": 11,
+    "passage": 11
+  },
+  "mean_passage_rerank_seconds": {
+    "fusion": 0.53156836,
+    "passage": 0.52600596
+  },
+  "gold_hit_at_10_transitions": {
+    "baseline_to_fusion": {
+      "both_miss": 28,
+      "gains": 2,
+      "losses": 1,
+      "both_hit": 19,
+      "mcnemar_exact_two_sided_p": 1.0
+    },
+    "fusion_to_passage": {
+      "both_miss": 26,
+      "gains": 3,
+      "losses": 3,
+      "both_hit": 18,
+      "mcnemar_exact_two_sided_p": 1.0
+    }
+  }
+}

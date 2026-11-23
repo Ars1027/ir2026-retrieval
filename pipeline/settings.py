@@ -26,6 +26,13 @@ DEFAULTS = {
     "chunking": {"size": 1200, "overlap": 200, "min_chars": 120},
     "bm25": {"k1": 0.9, "b": 0.4, "use_stopwords": True, "capitalized_boost": 1.25},
     "vector": {"enabled": False, "retriever": None, "fusion": None, "top_k": 200},
+    "passage_rerank": {
+        "mode": "off",
+        "candidate_docs": 100,
+        "words": 160,
+        "stride": 120,
+        "rrf_k": 60,
+    },
     "retrieval": {"final_docs": 10, "evidence_docs": 5},
     "answer": {"mode": "extractive", "model": None, "base_url": None,
                "timeout_seconds": 30, "max_output_tokens": 200, "max_answer_chars": 200},
@@ -109,3 +116,25 @@ def _validate(settings: dict) -> None:
     mode = (settings.get("answer") or {}).get("mode")
     if mode not in ("extractive", "model", "off"):
         raise SettingsError("answer.mode must be extractive, model or off")
+
+    # 先检查模式，再验证候选深度、窗口和融合常量。
+    rerank = settings["passage_rerank"]
+    if not isinstance(rerank, dict):
+        raise SettingsError("passage_rerank must be an object")
+    rerank_mode = rerank.get("mode")
+    if rerank_mode not in ("off", "fusion", "passage"):
+        raise SettingsError("passage_rerank.mode must be off, fusion or passage")
+    if rerank_mode == "off":
+        return
+
+    vector = settings.get("vector") or {}
+    if vector.get("enabled"):
+        raise SettingsError("passage_rerank requires the BM25 pipeline")
+    for key in ("candidate_docs", "words", "stride", "rrf_k"):
+        value = rerank[key]
+        if type(value) is not int or value < 1:
+            raise SettingsError(f"passage_rerank.{key} must be a positive integer")
+    if not retrieval["final_docs"] <= rerank["candidate_docs"] <= settings["candidate_k"]:
+        raise SettingsError("passage_rerank.candidate_docs must be between final_docs and candidate_k")
+    if rerank["stride"] > rerank["words"]:
+        raise SettingsError("passage_rerank.stride cannot exceed words")

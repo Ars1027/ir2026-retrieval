@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 
+from pipeline import passage_stage
 from pipeline.result_builder import assemble_result
 from pipeline.settings import load_settings
 from retrieval.bm25 import BM25Retriever
@@ -59,16 +60,21 @@ def solve(question, tools, config):
         elapsed_ms=search_ms,
     )
 
+    # 启用段落重排时保留更深的文档候选，便于提升原先十名以外的命中。
     started = time.monotonic()
-    docs = aggregate_documents(hits, top_k=final_docs)
+    depth = passage_stage.candidate_depth(settings, final_docs)
+    docs = aggregate_documents(hits, top_k=depth)
     aggregate_ms = (time.monotonic() - started) * 1000
     tools.record_retrieval(
         stage="document_aggregate",
-        arguments={"chunks": len(hits), "top_k": final_docs},
+        arguments={"chunks": len(hits), "top_k": depth},
         output={"documents": [{"doc_id": d["doc_id"], "rank": d["rank"],
                                "score": d["score"], "best_hit": d["hits"][0]["chunk_id"]}
                               for d in docs]},
         doc_ids=[d["doc_id"] for d in docs],
         elapsed_ms=aggregate_ms,
     )
-    return assemble_result(question, docs, tools, settings, source="bm25")
+
+    # 使用同一证据与答案流程组装最终排序，避免消融夹带作答变更。
+    ranked = passage_stage.rerank(query, docs, tools, settings, final_docs)
+    return assemble_result(question, ranked, tools, settings, source="bm25")

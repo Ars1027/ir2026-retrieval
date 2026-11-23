@@ -2,7 +2,7 @@
 
 现代信息检索课程大作业，在固定的 10,000 篇文档上检索、回答问题并提供原文证据。数据划分为 train100、dev50、test50。
 
-基础方法为 **BM25 + BGE-M3 + 文档级 RRF**，冻结配置是 `configs/final.json`。附加题二已完成教师轨迹采集、Qwen2.5-1.5B LoRA 训练和训练前后对照；附加题一的进一步检索改进与消融待完成。
+基础方法为 **BM25 + BGE-M3 + 文档级 RRF**，冻结配置是 `configs/final.json`。附加题一比较 BM25 候选内的段落重排与消融。附加题二已完成教师轨迹采集、Qwen2.5-1.5B LoRA 训练和训练前后对照。
 
 ## 实验结果
 
@@ -48,6 +48,10 @@ Windows 可使用 `./run.ps1`，其他平台可使用 `bash run.sh`，参数与 
 python check_results.py --split test --run-dir output/hybrid/test_base_final --submission
 ```
 
+## 附加题一：段落 BM25 重排
+
+在相同的词块 BM25 候选上，基础、等权融合和仅段落排序的 dev50 Hit@10 分别为 0.40、0.42、0.42。三组复用现有的抽取式答案、引用和运行入口。运行命令、失败案例、时间开销和逐题配对统计见[段落重排实验](docs/RERANKING.md)。
+
 ## 附加题二：小模型 LoRA
 
 运行环境为 **Apple Silicon、macOS arm64、Python 3.12**，实验机器有 32 GB 统一内存。教师为 Qwen3-4B，学生为 Qwen2.5-1.5B，两者使用固定 revision 的本地 MLX 4-bit 权重。
@@ -69,7 +73,7 @@ bash run_bonus2.sh run --config configs/posttraining/student_frozen.json \
 ## 文档与目录
 
 - [基础实验结果](docs/RESULTS.md)：dev/test、构建资源和历史实验。
-- [项目交接](docs/HANDOFF.md)：模块入口、附加题一扩展与课程交付文件。
+- [项目交接](docs/HANDOFF.md)：模块入口、附加题实验与课程交付文件。
 - [后训练复现](docs/POSTTRAINING.md)与[后训练结果](docs/POSTTRAINING_RESULTS.md)：附加题二实现与实验。
 - [向量接口](VECTOR_PLUGIN_GUIDE.md)：自定义检索器与融合方法。
 - [课程协议](SPEC.md)与[数据使用约定](DATA_USE.md)。
@@ -87,4 +91,4 @@ python -m unittest discover -s tests/vector_backend -v
 python -m unittest discover -s tests/posttraining -v
 ```
 
-记录中的测试共 128 项：基础 108 项，后训练 20 项。
+记录中的测试共 131 项，包含 3 项段落重排测试与 20 项后训练测试。
