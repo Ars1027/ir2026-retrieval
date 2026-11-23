@@ -1,6 +1,6 @@
 # 项目交接
 
-基础检索和附加题二已完成，实验分别见[基础结果](RESULTS.md)与[后训练结果](POSTTRAINING_RESULTS.md)。附加题一继续从当前 BM25 / 混合检索对照开展新方法与消融。
+基础检索、段落重排和小模型后训练实验分别见[基础结果](RESULTS.md)、[段落重排](RERANKING.md)与[后训练结果](POSTTRAINING_RESULTS.md)。
 
 ## 入口与模块
 
@@ -10,6 +10,7 @@
 | BM25 对照 | `agent/bm25_solution.py`、`configs/bm25.json` |
 | 原文、切块、ID 与字符跨度 | `retrieval/corpus_adapter.py`、`chunking.py`、`contracts.py` |
 | BM25 与文档聚合 | `retrieval/bm25.py`、`document_rank.py` |
+| 段落 BM25 重排与消融 | `retrieval/passage_rank.py`、`pipeline/passage_stage.py`、`configs/bonus1/` |
 | API 编码、FAISS、RRF | `vector_backend/ada.py`、`scripts/build_vector.py`、`pipeline/vector_stage.py` |
 | 引用、答案与结果组装 | `pipeline/evidence.py`、`answer.py`、`model_client.py`、`result_builder.py` |
 | 基础运行与配置 | `pipeline/settings.py`、`scripts/run_baseline.py`、`run.ps1`、`run.sh` |
@@ -21,14 +22,7 @@
 
 ## 附加题一：检索方法改进
 
-当前混合检索 dev Hit@10=0.44、Hit@1=0.16，抽取式答案 AnswerEM=0。可从检索、重排、查询改写或多轮 Agent 中选择改进方向，并与已有完整 dev50 对照。
-
-- 为新方法单独保存配置和输出，保留 `configs/final.json` 作为基础对照。
-- 向量检索器实现 `retrieval.interfaces.VectorRetriever`，融合方法实现 `DocumentFusion`，通过 `module:factory` 加载，见[向量接口](../VECTOR_PLUGIN_GUIDE.md)。
-- 固定流程使用 `retrieval` 日志；模型自主选择工具时使用 `agent` 与 `model_tool`，通过 `run.py --method-type agent --model-label <实际模型>` 运行。
-- 先在 train 冒烟，再评测完整 dev50，报告检索指标、答案、耗时、token 和失败分布。参数冻结后运行 test50。
-
-生成式答案客户端和 `configs/model.example.json` 可复用，尚无该方案的正式实验结果。
+用 `scripts/run_baseline.py --method bm25 --config configs/bonus1/fusion.json` 启用段落融合，`configs/bonus1/passage.json` 启用仅段落消融。三个对照在同一语料、词块索引和预算下完成 dev50，冻结融合版完成 test50。配对结果和复现步骤见[段落重排实验](RERANKING.md)。
 
 ## 附加题二：小模型后训练
 
@@ -43,8 +37,9 @@
 | BGE-M3 索引与缓存 | `artifacts/bge_m3/`，API 重建或课程内部传递 |
 | 基础 dev50 | `output/hybrid/bge_hybrid_dev_20261103/` |
 | 基础最终 test50 | `output/hybrid/test_base_final/` |
+| 段落重排 dev/test 结果与日志 | `output/bonus1/`，课程内部交接 |
 | 后训练教师、dev/test、训练样本与日志 | 由附加题二成员的课程交付包提供，目录见[后训练复现](POSTTRAINING.md#文件与交付) |
-| 聚合实验记录 | Git 中的 `records/bm25/`、`records/hybrid/`、`records/posttraining/` |
+| 聚合实验记录 | Git 中的 `records/bm25/`、`records/hybrid/`、`records/bonus1/`、`records/posttraining/` |
 | 冻结 LoRA 适配器 | Git 中的 `weights/posttraining/` |
 | API 密钥 | 自行设置环境变量 `OPENROUTER_API_KEY` |
 
