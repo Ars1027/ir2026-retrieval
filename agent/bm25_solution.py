@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import time
 
-from pipeline import passage_stage
 from pipeline.result_builder import assemble_result
 from pipeline.settings import load_settings
 from retrieval.bm25 import BM25Retriever
@@ -37,8 +36,8 @@ def _serialise_hits(hits):
 
 def solve(question, tools, config):
     settings = load_settings()
-    final_docs = int((settings.get("retrieval") or {}).get("final_docs") or 10)
-    candidate_k = int(settings.get("candidate_k") or 200)
+    final_docs = settings["retrieval"]["final_docs"]
+    candidate_k = settings["candidate_k"]
     query = question["question"]
 
     load_started = time.monotonic()
@@ -60,9 +59,10 @@ def solve(question, tools, config):
         elapsed_ms=search_ms,
     )
 
-    # 启用段落重排时保留更深的文档候选，便于提升原先十名以外的命中。
+    passage = settings["passage_rerank"]
+    rerank_enabled = passage["mode"] != "off"
+    depth = passage["candidate_docs"] if rerank_enabled else final_docs
     started = time.monotonic()
-    depth = passage_stage.candidate_depth(settings, final_docs)
     docs = aggregate_documents(hits, top_k=depth)
     aggregate_ms = (time.monotonic() - started) * 1000
     tools.record_retrieval(
@@ -75,6 +75,18 @@ def solve(question, tools, config):
         elapsed_ms=aggregate_ms,
     )
 
-    # 使用同一证据与答案流程组装最终排序，避免消融夹带作答变更。
-    ranked = passage_stage.rerank(query, docs, tools, settings, final_docs)
-    return assemble_result(question, ranked, tools, settings, source="bm25")
+    if rerank_enabled:
+        from retrieval.passage_rank import rerank_documents
+
+        started = time.monotonic()
+        options = dict(passage, use_stopwords=settings["bm25"]["use_stopwords"])
+        ranked, details = rerank_documents(query, docs, tools.corpus.text, options)
+        docs = ranked[:final_docs]
+        tools.record_retrieval(
+            stage="passage_rerank",
+            arguments=passage,
+            output={"documents": details, "returned": len(docs)},
+            doc_ids=[doc["doc_id"] for doc in ranked],
+            elapsed_ms=(time.monotonic() - started) * 1000,
+        )
+    return assemble_result(question, docs, tools, settings, source="bm25")

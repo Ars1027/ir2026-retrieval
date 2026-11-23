@@ -10,7 +10,7 @@
 | BM25 对照 | `agent/bm25_solution.py`、`configs/bm25.json` |
 | 原文、切块、ID 与字符跨度 | `retrieval/corpus_adapter.py`、`chunking.py`、`contracts.py` |
 | BM25 与文档聚合 | `retrieval/bm25.py`、`document_rank.py` |
-| 段落 BM25 重排与消融 | `retrieval/passage_rank.py`、`pipeline/passage_stage.py`、`configs/bonus1/` |
+| 段落 BM25 重排与消融 | `retrieval/passage_rank.py`、`configs/bonus1/` |
 | API 编码、FAISS、RRF | `vector_backend/ada.py`、`scripts/build_vector.py`、`pipeline/vector_stage.py` |
 | 引用、答案与结果组装 | `pipeline/evidence.py`、`answer.py`、`model_client.py`、`result_builder.py` |
 | 基础运行与配置 | `pipeline/settings.py`、`scripts/run_baseline.py`、`run.ps1`、`run.sh` |
@@ -19,10 +19,6 @@
 | 官方检查与评测 | `check_results.py`、`evaluate.py`、`scripts/summarize_runs.py` |
 
 `vector_backend/ada.py` 沿用旧文件名，实际模型由配置决定，当前冻结方法使用 BGE-M3。
-
-## 附加题一：检索方法改进
-
-用 `scripts/run_baseline.py --method bm25 --config configs/bonus1/fusion.json` 启用段落融合，`configs/bonus1/passage.json` 启用仅段落消融。三个对照在同一语料、词块索引和预算下完成 dev50，冻结融合版完成 test50。配对结果和复现步骤见[段落重排实验](RERANKING.md)。
 
 ## 附加题二：小模型后训练
 

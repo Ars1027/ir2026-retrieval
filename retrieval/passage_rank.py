@@ -11,7 +11,6 @@ _WORD = re.compile(r"\S+")
 
 
 def _windows(text: str, words: int, stride: int):
-    # 用原文词边界生成窗口，保留 Python 字符偏移用于检查。
     tokens = list(_WORD.finditer(text))
     for first in range(0, len(tokens), stride):
         stop = min(first + words, len(tokens))
@@ -23,7 +22,6 @@ def _windows(text: str, words: int, stride: int):
 
 
 def _best_passages(docs: list, text_getter, expression: str, words: int, stride: int) -> dict:
-    # 对固定候选的段落建临时索引，查询结束后释放内存。
     with closing(sqlite3.connect(":memory:")) as db:
         db.execute("""
             CREATE VIRTUAL TABLE passages USING fts5(
@@ -58,7 +56,6 @@ def _best_passages(docs: list, text_getter, expression: str, words: int, stride:
 
 def rerank_documents(query: str, docs: list, text_getter, options: dict) -> tuple[list, list]:
     """Rerank the shared candidate set, keeping the original evidence hits."""
-    # 沿用现有查询分词和数字处理，段落分词及词干归一化交给 FTS5。
     terms = tokenize(query, use_stopwords=options["use_stopwords"])
     terms = list(dict.fromkeys(terms))
     if not docs or not terms:
@@ -80,7 +77,6 @@ def rerank_documents(query: str, docs: list, text_getter, options: dict) -> tupl
         for rank, doc in enumerate(passage_order, 1)
     }
 
-    # 融合组同时使用前级与段落名次，消融组只使用段落排序。
     def fusion_score(doc):
         base_rank = doc["rank"]
         passage_rank = passage_ranks[doc["doc_id"]]

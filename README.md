@@ -2,7 +2,7 @@
 
 现代信息检索课程大作业，在固定的 10,000 篇文档上检索、回答问题并提供原文证据。数据划分为 train100、dev50、test50。
 
-基础方法为 **BM25 + BGE-M3 + 文档级 RRF**，冻结配置是 `configs/final.json`。附加题一比较 BM25 候选内的段落重排与消融。附加题二已完成教师轨迹采集、Qwen2.5-1.5B LoRA 训练和训练前后对照。
+基础方法为 **BM25 + BGE-M3 + 文档级 RRF**，冻结配置是 `configs/final.json`。附加题二已完成教师轨迹采集、Qwen2.5-1.5B LoRA 训练和训练前后对照。
 
 ## 实验结果
 
@@ -50,7 +50,7 @@ python check_results.py --split test --run-dir output/hybrid/test_base_final --s
 
 ## 附加题一：段落 BM25 重排
 
-在相同的词块 BM25 候选上，基础、等权融合和仅段落排序的 dev50 Hit@10 分别为 0.40、0.42、0.42。三组复用现有的抽取式答案、引用和运行入口。运行命令、失败案例、时间开销和逐题配对统计见[段落重排实验](docs/RERANKING.md)。
+在同一批 BM25 候选上重排，dev50 的 Hit@10 从 20/50 提高到 21/50。仅段落排序和等权融合各命中 21 题。[实验结果、案例与复现命令](docs/RERANKING.md)
 
 ## 附加题二：小模型 LoRA
 

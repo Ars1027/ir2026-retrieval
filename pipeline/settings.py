@@ -104,9 +104,8 @@ def _digest(raw: dict) -> str:
 
 
 def _validate(settings: dict) -> None:
-    for key in ("candidate_k",):
-        if type(settings.get(key)) is not int or settings[key] < 1:
-            raise SettingsError(f"{key} must be a positive integer")
+    if type(settings["candidate_k"]) is not int or settings["candidate_k"] < 1:
+        raise SettingsError("candidate_k must be a positive integer")
     retrieval = settings.get("retrieval") or {}
     if type(retrieval.get("final_docs")) is not int or not 1 <= retrieval["final_docs"] <= 10:
         raise SettingsError("retrieval.final_docs must be in [1, 10]")
@@ -117,7 +116,6 @@ def _validate(settings: dict) -> None:
     if mode not in ("extractive", "model", "off"):
         raise SettingsError("answer.mode must be extractive, model or off")
 
-    # 先检查模式，再验证候选深度、窗口和融合常量。
     rerank = settings["passage_rerank"]
     if not isinstance(rerank, dict):
         raise SettingsError("passage_rerank must be an object")

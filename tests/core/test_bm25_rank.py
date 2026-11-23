@@ -14,6 +14,7 @@ for path in (ROOT, HERE):
 
 from retrieval import bm25, contracts  # noqa: E402
 from retrieval.document_rank import aggregate_documents  # noqa: E402
+from retrieval.passage_rank import rerank_documents  # noqa: E402
 import fixtures  # noqa: E402
 
 
@@ -96,6 +97,23 @@ class AggregationTests(unittest.TestCase):
         hits = [self.hit("d1#00000", "d1", 1, 3.0, 100, 300)]
         docs = aggregate_documents(hits, top_k=10)
         self.assertEqual((docs[0]["hits"][0]["start"], docs[0]["hits"][0]["end"]), (100, 300))
+
+    def test_passage_match_promotes_document_and_fusion_tie_keeps_base_order(self):
+        texts = {"d1": "regional archive", "d2": "scarlet observatory"}
+        hits = [self.hit(f"{doc_id}#00000", doc_id, rank, 3.0 - rank, end=len(text))
+                for rank, (doc_id, text) in enumerate(texts.items(), 1)]
+        docs = aggregate_documents(hits)
+        options = dict(mode="passage", words=160, stride=120, rrf_k=60, use_stopwords=True)
+        ranked, rows = rerank_documents("scarlet", docs, texts.__getitem__, options)
+        self.assertEqual([d["doc_id"] for d in ranked], ["d2", "d1"])
+        self.assertEqual(ranked[0]["hits"], [hits[1]])
+        self.assertEqual(rows[0]["passage_span"], [0, len(texts["d2"])])
+
+        options["mode"] = "fusion"
+        ranked, rows = rerank_documents("scarlet", docs, texts.__getitem__, options)
+        self.assertEqual([d["doc_id"] for d in ranked], ["d1", "d2"])
+        self.assertEqual([row["passage_rank"] for row in rows], [2, 1])
+        self.assertEqual(ranked[0]["score"], ranked[1]["score"])
 
     def test_invalid_hits_are_rejected(self):
         with self.assertRaises(contracts.ContractError):
