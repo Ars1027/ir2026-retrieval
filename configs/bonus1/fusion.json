@@ -1,0 +1,45 @@
+{
+  "method": "bm25-passage-rrf-v1",
+  "chunks_dir": "artifacts/chunks",
+  "bm25_index_dir": "artifacts/bm25",
+  "vector_index_dir": "artifacts/vector",
+  "candidate_k": 200,
+  "chunking": {
+    "size": 1200,
+    "overlap": 200,
+    "min_chars": 120
+  },
+  "bm25": {
+    "k1": 0.9,
+    "b": 0.4,
+    "use_stopwords": true,
+    "capitalized_boost": 1.25
+  },
+  "vector": {
+    "enabled": false,
+    "retriever": null,
+    "fusion": null,
+    "top_k": 200,
+    "index_dir": "artifacts/vector"
+  },
+  "retrieval": {
+    "final_docs": 10,
+    "evidence_docs": 5
+  },
+  "answer": {
+    "mode": "extractive",
+    "max_answer_chars": 200,
+    "model": null,
+    "base_url": null,
+    "timeout_seconds": 30,
+    "max_output_tokens": 200
+  },
+  "frozen": true,
+  "passage_rerank": {
+    "mode": "fusion",
+    "candidate_docs": 100,
+    "words": 160,
+    "stride": 120,
+    "rrf_k": 60
+  }
+}
